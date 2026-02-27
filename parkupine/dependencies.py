@@ -1,7 +1,8 @@
 """
 FastApi dependency injection nonsense
 """
-from typing import Annotated
+
+from typing import Annotated, cast
 
 from fastapi import Request
 from fastapi.params import Depends
@@ -14,7 +15,7 @@ def get_context(request: Request) -> AppContext:
     """
     Dependency function that provides AppContext instance, as a shortcut
     """
-    return request.app.context
+    return cast(AppContext, request.app.context)
 
 
 AppContextDep = Annotated[AppContext, Depends(get_context)]

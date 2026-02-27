@@ -9,16 +9,25 @@ Endpoints:
 
 This module uses fastapi_openai_compat functions to outsource boring streaming and modeling code.
 """
+
 import logging
 import time
 import uuid
-from typing import AsyncGenerator, Generator, Annotated
+from typing import AsyncGenerator, Generator, Annotated, Any
 
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.openapi.utils import get_openapi
 from fastapi.params import Depends
-from fastapi_openai_compat import ModelsResponse, ModelObject, ChatRequest, ChatCompletion, CompletionResult, \
-    chat_completion_response, create_sync_streaming_response, create_async_streaming_response
+from fastapi_openai_compat import (
+    ModelsResponse,
+    ModelObject,
+    ChatRequest,
+    ChatCompletion,
+    CompletionResult,
+    chat_completion_response,
+    create_sync_streaming_response,
+    create_async_streaming_response,
+)
 from pydantic import BaseModel, Field
 from starlette.responses import StreamingResponse
 
@@ -30,15 +39,11 @@ from parkupine.settings import APP_TITLE, APP_DESCRIPTION
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(
-    title=APP_TITLE,
-    description=APP_DESCRIPTION,
-    lifespan=AppContext
-)
+app = FastAPI(title=APP_TITLE, description=APP_DESCRIPTION, lifespan=AppContext)
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Health check endpoint"""
     return {"status": "healthy"}
 
@@ -75,6 +80,7 @@ class OpenwebuiChatHeaders(BaseModel):
 
     Reference: https://docs.openwebui.com/reference/env-configuration/#enable_forward_user_info_headers
     """
+
     x_openwebui_message_id: str = Field(alias="X-OpenWebUI-Message-Id")
     x_openwebui_chat_id: str = Field(alias="X-OpenWebUI-Chat-Id")
 
@@ -84,7 +90,7 @@ class OpenwebuiChatHeaders(BaseModel):
 async def chat_completions(
     chat_request: ChatRequest,
     chat_headers: Annotated[OpenwebuiChatHeaders, Header()],
-    user: BaseUser = Depends(user_required)
+    user: Annotated[BaseUser, Depends(user_required)],
 ) -> ChatCompletion | StreamingResponse:
     """
     Generates a chat completion for the given conversation in OpenAI-compatible format.
@@ -125,7 +131,7 @@ async def chat_completions(
     raise HTTPException(status_code=400, detail="Unsupported response type from completion")
 
 
-def custom_openapi():
+def custom_openapi() -> dict[str, Any]:
     """
     This function is a patch for https://github.com/fastapi/fastapi/pull/12481 where openapi spec
     is incorrectly generated for routes with multiple pydantic models in its dependencies.
@@ -144,36 +150,39 @@ def custom_openapi():
     )
 
     # Iterate over offending paths
-    for path in ['/chat/completions', '/v1/chat/completions']:
-        parameters = openapi_schema['paths'][path]['post']['parameters']
+    for path in ["/chat/completions", "/v1/chat/completions"]:
+        parameters = openapi_schema["paths"][path]["post"]["parameters"]
 
         # Go through each defined route parameter, if they are header related and have complex schema,
         # remove parameter from parameter list completely
         for parameter in parameters[:]:
-            if parameter['in'] == 'header' and '$ref' in parameter['schema']:
+            if parameter["in"] == "header" and "$ref" in parameter["schema"]:
                 parameters.remove(parameter)
 
                 # ref looks like #/components/schemas/PydanticModelName
-                ref = parameter['schema']['$ref'].split('/')[-1]
-                schema = openapi_schema['components']['schemas'][ref]
+                ref = parameter["schema"]["$ref"].split("/")[-1]
+                schema = openapi_schema["components"]["schemas"][ref]
 
                 # Iterate through each schema property and create separate parameter for each
-                for property_name, property in schema['properties'].items():
-                    parameters.append({
-                        'in': 'header',
-                        'name': property_name,
-                        'required': property_name in schema['required'],
-                        'schema': property,
-                    })
+                for property_name, property in schema["properties"].items():
+                    parameters.append(
+                        {
+                            "in": "header",
+                            "name": property_name,
+                            "required": property_name in schema["required"],
+                            "schema": property,
+                        }
+                    )
 
-                    logger.debug(f'Patched openapi schema @ {path}: replaced {parameter} with {parameters[-1]}')
+                    logger.debug(f"Patched openapi schema @ {path}: replaced {parameter} with {parameters[-1]}")
 
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
 
-app.openapi = custom_openapi
+app.openapi = custom_openapi  # type: ignore[method-assign]
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)

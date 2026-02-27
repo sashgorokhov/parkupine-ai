@@ -1,6 +1,7 @@
 """
 FastApi authentication dependencies and shenanigans
 """
+
 from typing import Annotated, Literal
 
 from fastapi import Depends, HTTPException, Header
@@ -16,17 +17,18 @@ class BaseUser(BaseModel):
     """
     Model representing a User.
     """
+
     id: str
     name: str
     email: str
     role: Literal["user", "admin"]
 
     @property
-    def is_user(self):
+    def is_user(self) -> bool:
         return self.role == "user"
 
     @property
-    def is_admin(self):
+    def is_admin(self) -> bool:
         return self.role == "admin"
 
 
@@ -37,9 +39,10 @@ class OpenwebuiUserHeaders(BaseModel):
 
     Reference: https://docs.openwebui.com/reference/env-configuration/#enable_forward_user_info_headers
     """
-    x_openwebui_user_name: str = Field(alias='X-OpenWebUI-User-Name')
-    x_openwebui_user_email: str = Field(alias='X-OpenWebUI-User-Email')
-    x_openwebui_user_id: str = Field(alias='X-OpenWebUI-User-Id')
+
+    x_openwebui_user_name: str = Field(alias="X-OpenWebUI-User-Name")
+    x_openwebui_user_email: str = Field(alias="X-OpenWebUI-User-Email")
+    x_openwebui_user_id: str = Field(alias="X-OpenWebUI-User-Id")
 
 
 def user_required(
@@ -57,7 +60,7 @@ def user_required(
             id=openwebui_user_headers.x_openwebui_user_id,
             name=openwebui_user_headers.x_openwebui_user_name,
             email=openwebui_user_headers.x_openwebui_user_email,
-            role='user',
+            role="user",
         )
     raise HTTPException(status_code=403)
 
@@ -71,9 +74,9 @@ def admin_required(
     """
     if credentials and credentials.credentials == settings.parkupine_admin_key:
         return BaseUser(
-            id='0',
-            name='admin',
-            email='admin@admin.com',
-            role='admin',
+            id="0",
+            name="admin",
+            email="admin@admin.com",
+            role="admin",
         )
     raise HTTPException(status_code=403)

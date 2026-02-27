@@ -267,13 +267,15 @@ standard-no-fastapi-cloud-cli = ["email-validator (>=2.0.0)", "fastapi-cli[stand
 
 [[package]]
 name = "fastapi-openai-compat"
-version = "2.1"
+version = "0.2.0"
 description = "FastAPI router factory for OpenAI-compatible Chat Completion endpoints"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "fastapi_openai_compat-0.2.0-py3-none-any.whl", hash = "sha256:6bddc5abac04904e455c7b5e5be3a4fc235fa4b5cebaaa1b4c4bb459b57de509"},
+    {file = "fastapi_openai_compat-0.2.0.tar.gz", hash = "sha256:f1069a953f5e0bda0dad5775df531e7216db28c84b8feb7cbcd697b886a152b9"},
+]
 
 [package.dependencies]
 fastapi = "*"
@@ -281,12 +283,6 @@ pydantic = "*"
 
 [package.extras]
 haystack = ["haystack-ai"]
-
-[package.source]
-type = "git"
-url = "https://github.com/sashgorokhov-forks/fastapi-openai-compat.git"
-reference = "v2.1"
-resolved_reference = "64eb985d59496880bcba1c6bbf7bcf88e4972e81"
 
 [[package]]
 name = "filelock"
@@ -1975,4 +1971,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.14"
-content-hash = "9a618c596d19e4c0260a31b03ad30f6f07cbc1935e95b7b61b66855da5cfd7ec"
+content-hash = "7d8eafa310a4a57debb9091bf5fadcbf3992fb45629752f4c28affac855d904e"
