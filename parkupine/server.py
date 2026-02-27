@@ -1,0 +1,179 @@
+"""
+FastApi entrypoint, routes, and handler functions.
+
+Implements OpenAI-compatible API routes that are used by OpenWebUI as "imposter" openai model.
+
+Endpoints:
+- /models: Returns list of supported models (just one - Parkupine)
+- /chat/completions: Runs actual agent logic and returns AI responses
+
+This module uses fastapi_openai_compat functions to outsource boring streaming and modeling code.
+"""
+import logging
+import time
+import uuid
+from typing import AsyncGenerator, Generator, Annotated
+
+from fastapi import FastAPI, HTTPException, Header
+from fastapi.openapi.utils import get_openapi
+from fastapi.params import Depends
+from fastapi_openai_compat import ModelsResponse, ModelObject, ChatRequest, ChatCompletion, CompletionResult, \
+    chat_completion_response, create_sync_streaming_response, create_async_streaming_response
+from pydantic import BaseModel, Field
+from starlette.responses import StreamingResponse
+
+from parkupine.agent import handle_chat_request
+from parkupine.auth import BaseUser, user_required
+from parkupine.context import AppContext
+from parkupine.dependencies import AppSettingsDep
+from parkupine.settings import APP_TITLE, APP_DESCRIPTION
+
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title=APP_TITLE,
+    description=APP_DESCRIPTION,
+    lifespan=AppContext
+)
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy"}
+
+
+@app.get("/v1/models")
+@app.get("/models")
+async def models(settings: AppSettingsDep) -> ModelsResponse:
+    """
+    Returns a list of available models (deployed pipelines) in OpenAI-compatible format.
+    Each model object contains an `id` that can be used as the `model` field
+    in chat completion requests.
+
+    References:
+    - [OpenAI Models API](https://platform.openai.com/docs/api-reference/models/list)
+    - [Ollama OpenAI compatibility](https://github.com/ollama/ollama/blob/main/docs/openai.md)
+    """
+    return ModelsResponse(
+        data=[
+            ModelObject(
+                id=settings.model_id,
+                name=settings.model_name,
+                object="model",
+                created=int(time.time()),
+                owned_by=settings.model_owner,
+            )
+        ],
+        object="list",
+    )
+
+
+class OpenwebuiChatHeaders(BaseModel):
+    """
+    Headers provided by OpenWebUi
+
+    Reference: https://docs.openwebui.com/reference/env-configuration/#enable_forward_user_info_headers
+    """
+    x_openwebui_message_id: str = Field(alias="X-OpenWebUI-Message-Id")
+    x_openwebui_chat_id: str = Field(alias="X-OpenWebUI-Chat-Id")
+
+
+@app.post("/v1/chat/completions", response_model=ChatCompletion)
+@app.post("/chat/completions", response_model=ChatCompletion)
+async def chat_completions(
+    chat_request: ChatRequest,
+    chat_headers: Annotated[OpenwebuiChatHeaders, Header()],
+    user: BaseUser = Depends(user_required)
+) -> ChatCompletion | StreamingResponse:
+    """
+    Generates a chat completion for the given conversation in OpenAI-compatible format.
+    **Non-streaming** (`stream: false`, default): returns a single JSON `ChatCompletion` object.
+    **Streaming** (`stream: true`): returns a stream of server-sent events (SSE),
+    each containing a `ChatCompletion` chunk with incremental content in `choices[].delta`.
+
+    References:
+    - [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat/create)
+    """
+    try:
+        result: CompletionResult = await handle_chat_request(
+            chat_request=chat_request,
+            chat_id=chat_headers.x_openwebui_chat_id,
+            message_id=chat_headers.x_openwebui_message_id,
+            user=user,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Pipeline execution error")
+        raise HTTPException(status_code=500) from exc
+
+    if isinstance(result, ChatCompletion):
+        return result
+
+    resp_id = f"{chat_request.model}-{uuid.uuid4()}"
+
+    if isinstance(result, str):
+        return chat_completion_response(result, resp_id, chat_request.model)
+
+    if isinstance(result, Generator):
+        return create_sync_streaming_response(result, resp_id, chat_request.model)
+
+    if isinstance(result, AsyncGenerator):
+        return create_async_streaming_response(result, resp_id, chat_request.model)
+
+    raise HTTPException(status_code=400, detail="Unsupported response type from completion")
+
+
+def custom_openapi():
+    """
+    This function is a patch for https://github.com/fastapi/fastapi/pull/12481 where openapi spec
+    is incorrectly generated for routes with multiple pydantic models in its dependencies.
+    I only need this for convenience of testing routes through swagger ui.
+
+    This function will replace parameter spec for models with flattened parameter list, as expected.
+    """
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title=APP_TITLE,
+        version="0.1",
+        summary=APP_DESCRIPTION,
+        routes=app.routes,
+    )
+
+    # Iterate over offending paths
+    for path in ['/chat/completions', '/v1/chat/completions']:
+        parameters = openapi_schema['paths'][path]['post']['parameters']
+
+        # Go through each defined route parameter, if they are header related and have complex schema,
+        # remove parameter from parameter list completely
+        for parameter in parameters[:]:
+            if parameter['in'] == 'header' and '$ref' in parameter['schema']:
+                parameters.remove(parameter)
+
+                # ref looks like #/components/schemas/PydanticModelName
+                ref = parameter['schema']['$ref'].split('/')[-1]
+                schema = openapi_schema['components']['schemas'][ref]
+
+                # Iterate through each schema property and create separate parameter for each
+                for property_name, property in schema['properties'].items():
+                    parameters.append({
+                        'in': 'header',
+                        'name': property_name,
+                        'required': property_name in schema['required'],
+                        'schema': property,
+                    })
+
+                    logger.debug(f'Patched openapi schema @ {path}: replaced {parameter} with {parameters[-1]}')
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
