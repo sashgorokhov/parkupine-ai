@@ -12,34 +12,33 @@ This module uses fastapi_openai_compat functions to outsource boring streaming a
 
 import logging
 import time
-import uuid
-from typing import AsyncGenerator, Generator, Annotated, Any
+from typing import Annotated, Any
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.openapi.utils import get_openapi
-from fastapi.params import Depends
 from fastapi_openai_compat import (
     ModelsResponse,
     ModelObject,
     ChatRequest,
     ChatCompletion,
     CompletionResult,
-    chat_completion_response,
-    create_sync_streaming_response,
-    create_async_streaming_response,
 )
 from pydantic import BaseModel, Field
 from starlette.responses import StreamingResponse
 
 from parkupine.agent import handle_chat_request
-from parkupine.auth import BaseUser, user_required
+from parkupine.auth import UserDep
 from parkupine.context import AppContext
 from parkupine.dependencies import AppSettingsDep
 from parkupine.settings import APP_TITLE, APP_DESCRIPTION
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] [%(name)s] %(message)s")
 
-app = FastAPI(title=APP_TITLE, description=APP_DESCRIPTION, lifespan=AppContext)
+logger = logging.getLogger("uvicorn")
+
+DEBUG = True  # "DEBUG" in os.environ
+
+app = FastAPI(title=APP_TITLE, description=APP_DESCRIPTION, lifespan=AppContext, debug=DEBUG)
 
 
 @app.get("/health")
@@ -81,16 +80,18 @@ class OpenwebuiChatHeaders(BaseModel):
     Reference: https://docs.openwebui.com/reference/env-configuration/#enable_forward_user_info_headers
     """
 
-    x_openwebui_message_id: str = Field(alias="X-OpenWebUI-Message-Id")
-    x_openwebui_chat_id: str = Field(alias="X-OpenWebUI-Chat-Id")
+    # x_openwebui_message_id: str = Field(alias="x-openwebui-message-id")
+    x_openwebui_chat_id: str = Field(alias="x-openwebui-chat-id")
 
 
 @app.post("/v1/chat/completions", response_model=ChatCompletion)
 @app.post("/chat/completions", response_model=ChatCompletion)
 async def chat_completions(
+    request: Request,
     chat_request: ChatRequest,
+    settings: AppSettingsDep,
+    user: UserDep,
     chat_headers: Annotated[OpenwebuiChatHeaders, Header()],
-    user: Annotated[BaseUser, Depends(user_required)],
 ) -> ChatCompletion | StreamingResponse:
     """
     Generates a chat completion for the given conversation in OpenAI-compatible format.
@@ -102,33 +103,22 @@ async def chat_completions(
     - [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat/create)
     """
     try:
-        result: CompletionResult = await handle_chat_request(
+        result: CompletionResult = handle_chat_request(
             chat_request=chat_request,
             chat_id=chat_headers.x_openwebui_chat_id,
-            message_id=chat_headers.x_openwebui_message_id,
             user=user,
+            settings=settings,
         )
+        if not chat_request.stream:
+            return await anext(result)
+        else:
+            return StreamingResponse(result, media_type="text/event-stream")
+
     except HTTPException:
         raise
     except Exception as exc:
         logger.exception("Pipeline execution error")
         raise HTTPException(status_code=500) from exc
-
-    if isinstance(result, ChatCompletion):
-        return result
-
-    resp_id = f"{chat_request.model}-{uuid.uuid4()}"
-
-    if isinstance(result, str):
-        return chat_completion_response(result, resp_id, chat_request.model)
-
-    if isinstance(result, Generator):
-        return create_sync_streaming_response(result, resp_id, chat_request.model)
-
-    if isinstance(result, AsyncGenerator):
-        return create_async_streaming_response(result, resp_id, chat_request.model)
-
-    raise HTTPException(status_code=400, detail="Unsupported response type from completion")
 
 
 def custom_openapi() -> dict[str, Any]:

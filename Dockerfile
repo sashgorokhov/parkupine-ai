@@ -18,4 +18,4 @@ RUN --mount=type=cache,target=/root/.cache poetry install --no-interaction --no-
 COPY . ./
 
 # Run uvicorn server
-CMD ["uvicorn", "parkupine.server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "parkupine.server:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "debug"]

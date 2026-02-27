@@ -10,11 +10,32 @@ Software:
 - [open-webui](https://github.com/open-webui/open-webui)
 - [pgvector](https://github.com/pgvector/pgvector)
 
+
+## Features
+
+- Streaming model responses!
+- OpenAI-compatible API, plug and play with any LLM tool!
+
 ## Usage
 
 Prerequisites:
 - OpenAI api key
 - docker and docker compose
+
+1. Copy private.env.example into private.env and set PARKUPINE_OPENAI_API_KEY to your OpenAI api key
+2. Run `docker-compose up -d`
+3. Access Open WebUI at http://localhost:8080/
+4. Signup with any name, email and password
+
+Viewing logs:
+```shell
+docker-compose logs -f
+```
+
+Resetting everything and restarting all containers:
+```shell
+docker-compose down -v && docker-compose up -d --build
+```
 
 Swagger UI: http://localhost:8000/docs
 
@@ -22,7 +43,7 @@ Swagger UI: http://localhost:8000/docs
 
 ## Notes
 
-- User authentication is very basic and must be refactored
+- User authentication is very basic and token based. Relies on OpenWebUI user headers.
 - Management interface authentication is very basic too
 
 

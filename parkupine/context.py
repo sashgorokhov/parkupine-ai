@@ -25,12 +25,10 @@ class AppContext(AbstractAsyncContextManager[dict[str, Any]]):
 
     async def __aenter__(self) -> dict[str, Any]:
         """Lifespan setup. Can return dict that becomes starlette's scope["state"]"""
-        print("__aenter__")
         return {}
 
     async def __aexit__(
         self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None:
         """Lifespan teardown"""
-        print("__aexit__")
         pass

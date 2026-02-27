@@ -40,9 +40,9 @@ class OpenwebuiUserHeaders(BaseModel):
     Reference: https://docs.openwebui.com/reference/env-configuration/#enable_forward_user_info_headers
     """
 
-    x_openwebui_user_name: str = Field(alias="X-OpenWebUI-User-Name")
-    x_openwebui_user_email: str = Field(alias="X-OpenWebUI-User-Email")
-    x_openwebui_user_id: str = Field(alias="X-OpenWebUI-User-Id")
+    x_openwebui_user_name: str = Field(alias="x-openwebui-user-name")
+    x_openwebui_user_email: str = Field(alias="x-openwebui-user-email")
+    x_openwebui_user_id: str = Field(alias="x-openwebui-user-id")
 
 
 def user_required(
@@ -65,6 +65,9 @@ def user_required(
     raise HTTPException(status_code=403)
 
 
+UserDep = Annotated[BaseUser, Depends(user_required)]
+
+
 def admin_required(
     settings: AppSettingsDep,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
@@ -80,3 +83,6 @@ def admin_required(
             role="admin",
         )
     raise HTTPException(status_code=403)
+
+
+AdminDep = Annotated[BaseUser, Depends(admin_required)]
