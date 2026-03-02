@@ -43,6 +43,7 @@ services:
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
       - REDIS_URL=redis://redis:6379/0
+#      - GLOBAL_LOG_LEVEL=DEBUG
     env_file:
       - path: ./common.env
       - path: ./private.env
@@ -72,6 +73,8 @@ services:
       - path: ./common.env
       - path: ./private.env
         required: false
+    environment:
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,6 +85,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  parkuprine-worker:
+    build:
+      context: .
+    command: ["python", "-m", "parkupine.worker"]
+    env_file:
+      - path: ./common.env
+      - path: ./private.env
+        required: false
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONPATH=/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

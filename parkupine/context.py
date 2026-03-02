@@ -10,6 +10,7 @@ from types import TracebackType
 from typing import Type, Any
 
 from fastapi import FastAPI
+from redis.asyncio import Redis
 
 from parkupine.settings import AppSettings
 
@@ -22,13 +23,15 @@ class AppContext(AbstractAsyncContextManager[dict[str, Any]]):
         self.app = app
         self.app.context = self  # type: ignore[attr-defined]
         self.settings = AppSettings()
+        self.redis = Redis.from_url(self.settings.redis_url)
 
     async def __aenter__(self) -> dict[str, Any]:
         """Lifespan setup. Can return dict that becomes starlette's scope["state"]"""
+        await self.redis.initialize()
         return {}
 
     async def __aexit__(
         self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None:
         """Lifespan teardown"""
-        pass
+        await self.redis.aclose()

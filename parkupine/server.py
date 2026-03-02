@@ -5,38 +5,36 @@ Implements OpenAI-compatible API routes that are used by OpenWebUI as "imposter"
 
 Endpoints:
 - /models: Returns list of supported models (just one - Parkupine)
-- /chat/completions: Runs actual agent logic and returns AI responses
+- /chat/completions: Return AI response to user message
 
 This module uses fastapi_openai_compat functions to outsource boring streaming and modeling code.
 """
 
 import logging
 import time
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.openapi.utils import get_openapi
 from fastapi_openai_compat import (
     ModelsResponse,
     ModelObject,
     ChatRequest,
     ChatCompletion,
-    CompletionResult,
 )
 from pydantic import BaseModel, Field
 from starlette.responses import StreamingResponse
 
-from parkupine.agent import handle_chat_request
 from parkupine.auth import UserDep
 from parkupine.context import AppContext
-from parkupine.dependencies import AppSettingsDep
-from parkupine.settings import APP_TITLE, APP_DESCRIPTION
+from parkupine.dependencies import AppSettingsDep, AppContextDep
+from parkupine.settings import APP_TITLE, APP_DESCRIPTION, DEBUG
+from parkupine.worker import submit_chat_request
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] [%(name)s] %(message)s")
 
 logger = logging.getLogger("uvicorn")
 
-DEBUG = True  # "DEBUG" in os.environ
 
 app = FastAPI(title=APP_TITLE, description=APP_DESCRIPTION, lifespan=AppContext, debug=DEBUG)
 
@@ -87,11 +85,9 @@ class OpenwebuiChatHeaders(BaseModel):
 @app.post("/v1/chat/completions", response_model=ChatCompletion)
 @app.post("/chat/completions", response_model=ChatCompletion)
 async def chat_completions(
-    request: Request,
     chat_request: ChatRequest,
-    settings: AppSettingsDep,
+    context: AppContextDep,
     user: UserDep,
-    chat_headers: Annotated[OpenwebuiChatHeaders, Header()],
 ) -> ChatCompletion | StreamingResponse:
     """
     Generates a chat completion for the given conversation in OpenAI-compatible format.
@@ -103,16 +99,13 @@ async def chat_completions(
     - [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat/create)
     """
     try:
-        result: CompletionResult = handle_chat_request(
-            chat_request=chat_request,
-            chat_id=chat_headers.x_openwebui_chat_id,
-            user=user,
-            settings=settings,
-        )
-        if not chat_request.stream:
-            return await anext(result)
-        else:
+        # This will send chat request into redis queue, and wait for stream of tokens and return them here
+        result = submit_chat_request(redis=context.redis, chat_request=chat_request, user=user)
+
+        if chat_request.stream:
             return StreamingResponse(result, media_type="text/event-stream")
+        else:
+            return await anext(result)
 
     except HTTPException:
         raise

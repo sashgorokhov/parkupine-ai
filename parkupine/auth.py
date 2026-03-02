@@ -55,7 +55,7 @@ def user_required(
 
     These values are passed from OpenWebUI where user signs up and authenticates.
     """
-    if credentials and credentials.credentials == settings.parkupine_chat_key:
+    if credentials and credentials.credentials == settings.parkupine_chat_key.get_secret_value():
         return BaseUser(
             id=openwebui_user_headers.x_openwebui_user_id,
             name=openwebui_user_headers.x_openwebui_user_name,
@@ -75,7 +75,7 @@ def admin_required(
     """
     If bearer token is right, returns User instance with admin role.
     """
-    if credentials and credentials.credentials == settings.parkupine_admin_key:
+    if credentials and credentials.credentials == settings.parkupine_admin_key.get_secret_value():
         return BaseUser(
             id="0",
             name="admin",

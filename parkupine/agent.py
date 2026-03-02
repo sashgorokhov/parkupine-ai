@@ -4,9 +4,9 @@ Core agent logic
 
 import logging
 import time
+from typing import Iterator
 
-from fastapi_openai_compat import ChatRequest, CompletionResult, ChatCompletion, Choice, Message
-from fastapi_openai_compat.streaming import _completion_to_sse
+from fastapi_openai_compat import ChatRequest, ChatCompletion, Choice, Message
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessageChunk, AIMessage
 from langchain_openai import ChatOpenAI
@@ -14,13 +14,10 @@ from langchain_openai import ChatOpenAI
 from parkupine.auth import BaseUser
 from parkupine.settings import AppSettings
 
-
 logger = logging.getLogger("uvicorn")
 
 
-async def handle_chat_request(
-    chat_request: ChatRequest, chat_id: str, user: BaseUser, settings: AppSettings
-) -> CompletionResult:
+def handle_chat_request(chat_request: ChatRequest, user: BaseUser, settings: AppSettings) -> Iterator[ChatCompletion]:
 
     llm = ChatOpenAI(
         model="gpt-4o",
@@ -33,13 +30,13 @@ async def handle_chat_request(
     )
 
     if chat_request.stream:
-        async for chunk, metadata in agent.astream(
+        for chunk, _ in agent.stream(
             input={"messages": chat_request.messages},
             stream_mode="messages",
         ):
-            yield _completion_to_sse(create_chat_completion(chunk, model=chat_request.model))
+            yield create_chat_completion(chunk, model=chat_request.model)
     else:
-        result = await agent.ainvoke(input={"messages": chat_request.messages})
+        result = agent.invoke(input={"messages": chat_request.messages})
         yield create_chat_completion(result["messages"][-1], model=chat_request.model)
 
 
