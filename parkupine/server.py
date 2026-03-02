@@ -99,13 +99,17 @@ async def chat_completions(
     - [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat/create)
     """
     try:
+        logger.debug(f"Received chat request {chat_request} from {user}")
         # This will send chat request into redis queue, and wait for stream of tokens and return them here
         result = submit_chat_request(redis=context.redis, chat_request=chat_request, user=user)
 
         if chat_request.stream:
+            logger.debug("LLM response is a stream")
             return StreamingResponse(result, media_type="text/event-stream")
         else:
-            return await anext(result)
+            response = await anext(result)
+            logger.debug(f"LLM response: {response}")
+            return response
 
     except HTTPException:
         raise

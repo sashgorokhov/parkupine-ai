@@ -16,6 +16,7 @@ Software:
 - Streaming tokens!
 - OpenAI-compatible API, plug and play with any LLM tool!
 - Asynchronous LLM invocation with redis workers! Scalability!
+- Fully dockerized and container native!
 
 ## Usage
 
@@ -24,9 +25,15 @@ Prerequisites:
 - docker and docker compose
 
 1. Copy private.env.example into private.env and set PARKUPINE_OPENAI_API_KEY to your OpenAI api key
-2. Run `docker-compose up -d`. This will start all services.
-3. Run `docker-compose exec parkuprine-worker python -m parkupine.tables`. This will pre-populate DB with some data. This step is idempotent.
+2. Run `docker-compose up -d --wait`. This will start all services.
+3. Run `docker-compose exec worker python -m parkupine.tables`. This will pre-populate DB with some data. This step is idempotent.
 4. Access Open WebUI at http://localhost:8080/ and signup with any name, email and password
+
+
+Cleanup:
+```shell
+docker-compose.exe down -v --remove-orphans
+```
 
 Viewing logs:
 ```shell
