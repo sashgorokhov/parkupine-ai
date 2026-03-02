@@ -8,6 +8,8 @@ This information used by RAG pipeline.
 
 import logging
 
+from langgraph.checkpoint.postgres import ShallowPostgresSaver
+from langgraph.store.postgres import PostgresStore
 from sqlalchemy import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import SQLModel, Field, create_engine, Session
@@ -85,6 +87,16 @@ def populate_data(engine: Engine) -> None:
             pass
 
 
+def setup_langgraph_resources(settings: AppSettings) -> None:
+    logger.debug("Setting up postgres checkpointer")
+    with ShallowPostgresSaver.from_conn_string(settings.database_url_pg3.get_secret_value()) as checkpointer:
+        checkpointer.setup()
+
+    logger.debug("Setting up postgres store")
+    with PostgresStore.from_conn_string(settings.database_url_pg3.get_secret_value()) as store:
+        store.setup()
+
+
 # Simple entrypoint to create baseline data in postgres
 if __name__ == "__main__":
     setup_logging()
@@ -93,3 +105,4 @@ if __name__ == "__main__":
 
     populate_metadata(engine)
     populate_data(engine)
+    setup_langgraph_resources(settings)

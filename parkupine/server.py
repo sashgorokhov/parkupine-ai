@@ -12,9 +12,9 @@ This module uses fastapi_openai_compat functions to outsource boring streaming a
 
 import logging
 import time
-from typing import Any
+from typing import Any, Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.openapi.utils import get_openapi
 from fastapi_openai_compat import (
     ModelsResponse,
@@ -33,7 +33,7 @@ from parkupine.worker import submit_chat_request
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] [%(name)s] %(message)s")
 
-logger = logging.getLogger("uvicorn")
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(title=APP_TITLE, description=APP_DESCRIPTION, lifespan=AppContext, debug=DEBUG)
@@ -88,6 +88,7 @@ async def chat_completions(
     chat_request: ChatRequest,
     context: AppContextDep,
     user: UserDep,
+    chat_headers: Annotated[OpenwebuiChatHeaders, Header()],
 ) -> ChatCompletion | StreamingResponse:
     """
     Generates a chat completion for the given conversation in OpenAI-compatible format.
@@ -101,7 +102,9 @@ async def chat_completions(
     try:
         logger.debug(f"Received chat request {chat_request} from {user}")
         # This will send chat request into redis queue, and wait for stream of tokens and return them here
-        result = submit_chat_request(redis=context.redis, chat_request=chat_request, user=user)
+        result = submit_chat_request(
+            redis=context.redis, chat_id=chat_headers.x_openwebui_chat_id, chat_request=chat_request, user=user
+        )
 
         if chat_request.stream:
             logger.debug("LLM response is a stream")

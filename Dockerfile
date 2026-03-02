@@ -11,7 +11,7 @@ EXPOSE 8000
 RUN apt-get update && apt-get install -y curl git && rm -rf /var/lib/apt/lists/*
 RUN --mount=type=cache,target=/root/.cache pip install poetry==2.3.2
 
-COPY pyproject.toml poetry.lock README.md ./
+COPY pyproject.toml poetry.lock ./
 
 RUN --mount=type=cache,target=/root/.cache poetry install --no-interaction --no-ansi --no-root --only main
 

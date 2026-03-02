@@ -35,14 +35,14 @@ Cleanup:
 docker-compose.exe down -v --remove-orphans
 ```
 
-Viewing logs:
+Viewing server and worker logs:
 ```shell
-docker-compose logs -f
+docker-compose logs -f parkupine worker
 ```
 
-Resetting everything and restarting all containers:
+Rebuild server and worker:
 ```shell
-docker-compose down -v && docker-compose up -d --build
+docker-compose.exe up -d --build --force-recreate parkupine worker
 ```
 
 Swagger UI: http://localhost:8000/docs

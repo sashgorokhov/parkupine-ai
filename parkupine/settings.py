@@ -42,6 +42,13 @@ class AppSettings(BaseSettings):
             f"postgresql+psycopg2://{self.database_user}:{self.database_password.get_secret_value()}@{self.database_host}:{self.database_port}/{self.database_name}"
         )
 
+    @property
+    def database_url_pg3(self) -> SecretStr:
+        """For psycopg3 used by langchain"""
+        return SecretStr(
+            f"postgresql://{self.database_user}:{self.database_password.get_secret_value()}@{self.database_host}:{self.database_port}/{self.database_name}"
+        )
+
 
 # Sets up just stdout handler since we are docker-native anyway
 LOGGING_CONFIG = {
