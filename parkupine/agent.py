@@ -41,6 +41,9 @@ def handle_chat_request(chat_request: ChatRequest, user: BaseUser, settings: App
 
 
 def create_chat_completion(message: AIMessage, model: str) -> ChatCompletion:
+    """
+    Convert AIMessage to ChatCompletion
+    """
     object = "chat.completion"
 
     delta: Message | None = None

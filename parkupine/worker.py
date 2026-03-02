@@ -12,7 +12,7 @@ from redis import Redis
 
 from parkupine.agent import handle_chat_request
 from parkupine.auth import BaseUser
-from parkupine.settings import AppSettings
+from parkupine.settings import AppSettings, setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,6 @@ class Worker:
     def stop(self) -> None:
         """Stop the worker"""
         self.running = False
-        self.redis.close()
         logger.info("Worker stopped")
 
     def __enter__(self) -> "Worker":
@@ -152,11 +151,10 @@ def entrypoint() -> None:
 
     logger.info(f"Initializing: {settings}")
 
-    with Worker(settings=settings, redis=redis) as worker:
+    with Worker(settings=settings, redis=redis) as worker, redis:
         worker.start()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-
+    setup_logging()
     entrypoint()

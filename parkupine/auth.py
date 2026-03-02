@@ -62,7 +62,7 @@ def user_required(
             email=openwebui_user_headers.x_openwebui_user_email,
             role="user",
         )
-    raise HTTPException(status_code=403)
+    raise HTTPException(status_code=401)
 
 
 UserDep = Annotated[BaseUser, Depends(user_required)]
@@ -82,7 +82,7 @@ def admin_required(
             email="admin@admin.com",
             role="admin",
         )
-    raise HTTPException(status_code=403)
+    raise HTTPException(status_code=401)
 
 
 AdminDep = Annotated[BaseUser, Depends(admin_required)]

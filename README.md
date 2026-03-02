@@ -9,12 +9,13 @@ The goal of the project is to develop an intelligent chatbot that can interact w
 Software:
 - [open-webui](https://github.com/open-webui/open-webui)
 - [pgvector](https://github.com/pgvector/pgvector)
-
+- [sqlmodel](https://sqlmodel.tiangolo.com/)
 
 ## Features
 
-- Streaming model responses!
+- Streaming tokens!
 - OpenAI-compatible API, plug and play with any LLM tool!
+- Asynchronous LLM invocation with redis workers! Scalability!
 
 ## Usage
 
@@ -23,9 +24,9 @@ Prerequisites:
 - docker and docker compose
 
 1. Copy private.env.example into private.env and set PARKUPINE_OPENAI_API_KEY to your OpenAI api key
-2. Run `docker-compose up -d`
-3. Access Open WebUI at http://localhost:8080/
-4. Signup with any name, email and password
+2. Run `docker-compose up -d`. This will start all services.
+3. Run `docker-compose exec parkuprine-worker python -m parkupine.tables`. This will pre-populate DB with some data. This step is idempotent.
+4. Access Open WebUI at http://localhost:8080/ and signup with any name, email and password
 
 Viewing logs:
 ```shell

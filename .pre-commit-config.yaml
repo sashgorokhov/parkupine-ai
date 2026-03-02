@@ -43,3 +43,4 @@ repos:
           - pydantic_settings
           - fastapi<0.200
           - fastapi_openai_compat==0.2
+          - sqlmodel

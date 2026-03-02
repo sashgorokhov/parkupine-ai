@@ -12,7 +12,7 @@ from typing import Type, Any
 from fastapi import FastAPI
 from redis.asyncio import Redis
 
-from parkupine.settings import AppSettings
+from parkupine.settings import AppSettings, setup_logging
 
 
 class AppContext(AbstractAsyncContextManager[dict[str, Any]]):
@@ -27,6 +27,7 @@ class AppContext(AbstractAsyncContextManager[dict[str, Any]]):
 
     async def __aenter__(self) -> dict[str, Any]:
         """Lifespan setup. Can return dict that becomes starlette's scope["state"]"""
+        setup_logging()
         await self.redis.initialize()
         return {}
 
