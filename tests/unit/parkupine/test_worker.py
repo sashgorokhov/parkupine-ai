@@ -76,7 +76,7 @@ def test_worker_start(chat_work_item, worker, agent, sync_redis):
 
 
 def test_worker_handle_chat_work_item_error(chat_work_item, worker, agent, sync_redis):
-    agent.handle_chat_request.side_effect = [[ValueError("test")]]
+    agent.handle_chat_request.side_effect = [ValueError("test")]
 
     worker.handle_chat_work_item(chat_work_item)
 

@@ -18,6 +18,7 @@ class AppSettings(BaseSettings):
     parkupine_chat_key: SecretStr
     parkupine_openai_api_key: SecretStr
     parkupine_openai_model: str = "gpt-4"
+    parkupine_openai_temperature: float = 0.3
 
     model_id: str = "parkupine_v1"
     model_name: str = "Parkupine"

@@ -14,6 +14,7 @@ from typing import Iterator, Callable, Any, ParamSpec, TypeVar
 from fastapi_openai_compat import ChatRequest, ChatCompletion, Choice, Message
 from langchain.agents import create_agent
 from langchain.tools import tool
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessageChunk, AIMessage, ToolMessage, ToolMessageChunk
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
@@ -103,22 +104,30 @@ class Agent:
     The main entrypoint - handle_chat_request, receives a chat request and spits out LLM response tokens
     """
 
-    def __init__(self, db_session: Session, checkpointer: BaseCheckpointSaver, store: BaseStore, settings: AppSettings):
+    def __init__(
+        self,
+        db_session: Session,
+        checkpointer: BaseCheckpointSaver,
+        store: BaseStore,
+        settings: AppSettings,
+        model: BaseChatModel | None = None,
+    ):
         self._db_session = db_session
         self._settings = settings
         self._checkpointer = checkpointer
         self._store = store
 
-        self._graph = self._compile_graph()
-
-    def _compile_graph(self) -> CompiledStateGraph:
-        llm = ChatOpenAI(
-            model="gpt-4o",
+        model = model or ChatOpenAI(
+            model=self._settings.parkupine_openai_model,
             api_key=self._settings.parkupine_openai_api_key,
+            temperature=self._settings.parkupine_openai_temperature,
         )
 
+        self._graph = self._compile_graph(model)
+
+    def _compile_graph(self, model: BaseChatModel) -> CompiledStateGraph:
         agent = create_agent(
-            model=llm,
+            model=model,
             debug=self._settings.debug,
             checkpointer=self._checkpointer,
             store=self._store,
@@ -153,11 +162,7 @@ class Agent:
 
         if chat_request.stream:
             for chunk, _ in self._graph.stream(**invoke_params, stream_mode="messages"):
-                try:
-                    completion = create_chat_completion(chunk, model=chat_request.model)
-                except Exception:
-                    logger.exception(f"Failed processing chunk {repr(chunk)}")
-                    continue
+                completion = create_chat_completion(chunk, model=chat_request.model)
                 logger.debug(f"\t{type(chunk).__name__}({str(chunk)}) -> {completion.model_dump_json()}")
                 yield completion
         else:
