@@ -1,4 +1,9 @@
-""" """
+"""
+Defines Worker class that runs in a separate process. It polls redis queue
+for ChatWorkItem to work on, and once received, forwards that information to Agent.
+
+Tokens returned by agent are streamed back into redis channel.
+"""
 
 import asyncio
 import logging
@@ -81,10 +86,8 @@ class Worker:
     """
     Worker that processes chat requests from Redis queue and publishes results to channels.
 
-    This is supposed to run as a separate process from main server.
-
     Usage:
-        with Worker(settings, redis) as worker:
+        with Worker(agent, redis) as worker:
             worker.start()
     """
 

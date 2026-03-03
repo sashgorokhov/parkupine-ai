@@ -1,21 +1,26 @@
 """
-Core agent logic
+Agent logic - prompts, graph definition, RAG and tool functions.
+
+Defines Agent class, serving as a main collection of AI nonsense.
 """
 
+import functools
+import inspect
 import logging
 import time
 import uuid
-from typing import Iterator
+from typing import Iterator, Callable, Any, ParamSpec, TypeVar
 
 from fastapi_openai_compat import ChatRequest, ChatCompletion, Choice, Message
 from langchain.agents import create_agent
+from langchain.tools import tool
 from langchain_core.messages import AIMessageChunk, AIMessage, ToolMessage, ToolMessageChunk
 from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.store.base import BaseStore
-from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from parkupine.auth import BaseUser
@@ -25,7 +30,7 @@ from parkupine.tables import ParkingGarage, ParkingSpace, ParkingReservation
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """\
-You are a parking reservation assistant for the Parkupine parking management system.
+You are Parkupine, a parking reservation assistant.
 
 ## Core Responsibilities
 You help users with:
@@ -55,17 +60,47 @@ Be professional, helpful, and efficient. Users are often in a hurry when managin
 ensuring accuracy.
 """
 
+P = ParamSpec("P")
+T = TypeVar("T")
 
-class Context(BaseModel):
-    plate_number: str | None
-    user_name: str | None
-    user_surname: str | None
+
+def tool_method(**kwargs: Any) -> Callable[[Callable[P, T]], property]:
+    """
+    Create langchain Tool from class method.
+    This is needed because langchain cannot work with functions that have `self` argument (or any other non-llm
+    provided for that matter).
+
+    Basically what it does it hides original method funder other function while copying its name, signature
+    (excluding first argument - self) and docstring.
+
+    :param kwargs: passed to @tool decorator
+    """
+
+    def decorator(func: Callable[P, T]) -> property:
+        @property  # type: ignore[misc]
+        def wrapper(self: Any) -> BaseTool:
+            sig = inspect.signature(func)
+            new_params = list(sig.parameters.values())[1:]
+            new_sig = sig.replace(parameters=new_params)
+
+            @functools.wraps(func)
+            def bound(*args: Any, **kwargs: Any) -> T:
+                return func(self, *args, **kwargs)
+
+            bound.__signature__ = new_sig  # type: ignore[attr-defined]
+            return tool(bound, **kwargs)
+
+        return wrapper  # type: ignore[return-value]
+
+    return decorator
 
 
 class Agent:
     """
     Agent class manages graph execution and stores database connections and such.
     It also defines tools as methods that have access to provided connections.
+
+    The main entrypoint - handle_chat_request, receives a chat request and spits out LLM response tokens
     """
 
     def __init__(self, db_session: Session, checkpointer: BaseCheckpointSaver, store: BaseStore, settings: AppSettings):
@@ -82,92 +117,37 @@ class Agent:
             api_key=self._settings.parkupine_openai_api_key,
         )
 
-        # Have to do this because langchain cannot use tools created from methods.
-
-        def list_garages_by_name() -> list[str]:
-            """
-            Return names of available parking garages
-            """
-            return self.list_garages_by_name()
-
-        def get_garage_details_by_name(garage_name: str) -> ParkingGarage | None:
-            """
-            Return garage details (working hours, address, description) by name
-            """
-            return self.get_garage_details_by_name(garage_name)
-
-        def list_parking_spaces_by_garage(garage_name: str) -> list[ParkingSpace]:
-            """
-            Return parking spaces present in garage
-            """
-            return self.get_parking_spaces_by_garage(garage_name)
-
-        def make_reservation(
-            config: RunnableConfig,
-            plate_number: str,
-            user_name: str,
-            user_surname: str,
-            parking_space_name: str,
-            reservation_period: str,
-        ) -> str:
-            """
-            Create a reservation for parking space.
-            Must ask user for:
-            - car plate number
-            - name and surname
-            - reservation period
-            - parking space name for reservation
-            """
-            return self.make_reservation(
-                config=config,
-                plate_number=plate_number,
-                user_name=user_name,
-                user_surname=user_surname,
-                parking_space_name=parking_space_name,
-                reservation_period=reservation_period,
-            )
-
-        def list_reservations(config: RunnableConfig) -> list[ParkingReservation]:
-            """
-            Return all current reservations
-            """
-            return self.list_reservations(config=config)
-
-        def check_reservation(reservation_id: int, config: RunnableConfig) -> str:
-            """
-            Check reservation status
-            """
-            return self.check_reservation(config=config, reservation_id=reservation_id)
-
         agent = create_agent(
             model=llm,
             debug=self._settings.debug,
             checkpointer=self._checkpointer,
             store=self._store,
             system_prompt=SYSTEM_PROMPT,
-            context_schema=Context,
             tools=[
-                list_garages_by_name,
-                get_garage_details_by_name,
-                list_parking_spaces_by_garage,
-                make_reservation,
-                list_reservations,
-                check_reservation,
+                self.list_garages_by_name,
+                self.get_garage_details_by_name,
+                self.get_parking_spaces_by_garage,
+                self.make_reservation,
+                self.list_reservations,
+                self.check_reservation,
             ],
         )
 
         return agent
 
     def handle_chat_request(self, chat_request: ChatRequest, user: BaseUser, chat_id: str) -> Iterator[ChatCompletion]:
+        """
+        Run graph on provided chat request and return iterator over ChatCompletion objects
+        """
         invoke_params = dict(
             input={"messages": chat_request.messages},
-            config={
-                "configurable": {
+            config=RunnableConfig(
+                configurable={
                     "thread_id": chat_id,
                     "user": user,
                     "chat_id": chat_id,
                 }
-            },
+            ),
             durability="sync",
         )
 
@@ -184,12 +164,20 @@ class Agent:
             result = self._graph.invoke(**invoke_params)
             yield create_chat_completion(result["messages"][-1], model=chat_request.model)
 
+    @tool_method()
     def list_garages_by_name(self) -> list[str]:
+        """
+        Return names of available parking garages
+        """
         statement = select(ParkingGarage)
         garages = self._db_session.exec(statement).all()
         return [garage.name for garage in garages]
 
+    @tool_method()
     def get_garage_details_by_name(self, garage_name: str) -> ParkingGarage | None:
+        """
+        Return garage details (working hours, address, description) by name
+        """
         statement = select(ParkingGarage).where(ParkingGarage.name == garage_name)
         try:
             garage = self._db_session.exec(statement).one()
@@ -198,13 +186,18 @@ class Agent:
 
         return garage
 
+    @tool_method()
     def get_parking_spaces_by_garage(self, garage_name: str) -> list[ParkingSpace]:
+        """
+        Return parking spaces present in garage
+        """
         garage: ParkingGarage = self._db_session.exec(
             select(ParkingGarage).where(ParkingGarage.name == garage_name)
         ).one()
         spaces = self._db_session.exec(select(ParkingSpace).where(ParkingSpace.garage_id == garage.id)).all()
         return list(spaces)
 
+    @tool_method()
     def make_reservation(
         self,
         config: RunnableConfig,
@@ -214,6 +207,14 @@ class Agent:
         parking_space_name: str,
         reservation_period: str,
     ) -> str:
+        """
+        Create a reservation for parking space.
+        Must ask user for:
+        - parking space name for reservation
+        - name and surname
+        - car plate number
+        - reservation period
+        """
         parking_space = self._db_session.exec(select(ParkingSpace).where(ParkingSpace.name == parking_space_name)).one()
 
         reservation = ParkingReservation(
@@ -230,14 +231,22 @@ class Agent:
 
         return f"Created reservation with id={reservation.id}. Status: {reservation.status}"
 
+    @tool_method()
     def list_reservations(self, config: RunnableConfig) -> list[ParkingReservation]:
+        """
+        Return all current reservations
+        """
         return list(
             self._db_session.exec(
                 select(ParkingReservation).where(ParkingReservation.user_id == config["configurable"]["user"].id)
             ).all()
         )
 
+    @tool_method()
     def check_reservation(self, config: RunnableConfig, reservation_id: int) -> str:
+        """
+        Check reservation status
+        """
         reservation = self._db_session.exec(
             select(ParkingReservation)
             .where(ParkingReservation.id == reservation_id)

@@ -55,6 +55,7 @@ def user_required(
 
     These values are passed from OpenWebUI where user signs up and authenticates.
     """
+
     if credentials and credentials.credentials == settings.parkupine_chat_key.get_secret_value():
         return BaseUser(
             id=openwebui_user_headers.x_openwebui_user_id,

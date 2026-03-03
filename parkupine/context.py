@@ -19,11 +19,11 @@ class AppContext(AbstractAsyncContextManager[dict[str, Any]]):
     app: FastAPI
     settings: AppSettings
 
-    def __init__(self, app: FastAPI):
+    def __init__(self, app: FastAPI, settings: AppSettings | None = None, redis: Redis | None = None) -> None:
         self.app = app
         self.app.context = self  # type: ignore[attr-defined]
-        self.settings = AppSettings()
-        self.redis = Redis.from_url(self.settings.redis_url)
+        self.settings = settings or AppSettings()
+        self.redis = redis or Redis.from_url(self.settings.redis_url)
 
     async def __aenter__(self) -> dict[str, Any]:
         """Lifespan setup. Can return dict that becomes starlette's scope["state"]"""

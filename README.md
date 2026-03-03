@@ -1,15 +1,22 @@
-# parkupine
+<h1 align="center">parkupine</h1>
+<p align="center">
+  <img src="assets/logo.png" height="128" />
+</p>
 
-
-Intelligent parking reservation system.
-
+Your favourite parking reservation assistant.
 
 The goal of the project is to develop an intelligent chatbot that can interact with users, provide information about parking spaces, handle the reservation process, and involve a human administrator for confirmation ("human-in-the-loop"). The project will be divided into 4 stages, with each stage implementing a specific functionality.
 
-Software:
+Some of the used software:
 - [open-webui](https://github.com/open-webui/open-webui)
 - [pgvector](https://github.com/pgvector/pgvector)
 - [sqlmodel](https://sqlmodel.tiangolo.com/)
+- [fastapi](https://fastapi.tiangolo.com/)
+- [langchain](https://docs.langchain.com/oss/python/langchain/overview)
+- [valkey](https://valkey.io/)
+
+Under the hood, this is a Open WebUI frontend with FastApi OpenAI-compatible backend. Agent logic is executed asynchronously
+on separate workers, with communication through redis queue and channels.
 
 ## Features
 
@@ -17,6 +24,7 @@ Software:
 - OpenAI-compatible API, plug and play with any LLM tool!
 - Asynchronous LLM invocation with redis workers! Scalability!
 - Fully dockerized and container native!
+- 86% artisanal hand-crafted code!
 
 ## Usage
 
@@ -49,11 +57,30 @@ Swagger UI: http://localhost:8000/docs
 
 ## Implementation details
 
-## Notes
+"Customer" facing frontend is implemented through OpenWebUi. It handles user registration, authentication and
+interaction with underlying agent logic. It is highly configurable and you can find 100+ environment
+variables in this [.env](common.env) file.
 
-- User authentication is very basic and token based. Relies on OpenWebUI user headers.
-- Management interface authentication is very basic too
+OpenWebUI communicates with FastApi [server](parkupine/server.py) that mimics OpenAI interface. This server has just two
+endpoints, one of which is chat completions.
 
+This endpoint authenticates user through bearer api token and collects all context information, and creates
+`ChatWorkItem` and puts it into `chat_requests` queue. It then subscribes to request-scoped channel in redis
+and waits for LLM tokens, which are streamed back to client.
+
+In parallel, there is a [Worker](parkupine/worker.py) instance in another process that polls `chat_requests` queue for new `ChatWorkItem`s.
+Once appeared, it passes all context to [Agent](parkupine/agent.py) `.handle_chat_request` method. It runs graph
+and returns LLM tokens, which are published into request-scoped channel mentioned earlier.
+
+General data flow can be described as:
+
+User -> Open WebUI -> fastapi `/v1/chat/completions` -> redis queue -> worker process -> Agent class
+-> LangGraph `.invoke`
+
+## Tradeoffs and cut corners
+
+- User management is very rudimentary and not suitable for production. Single token authenticates all users.
+- Relies on openwebui headers for user identification which limits adaptability.
 
 ---
 
@@ -91,6 +118,7 @@ Collect user inputs for reservations.
 
 4. Implement guard rails mechanism. Add a filtering to prevent exposure of sensitive data (e.g., using pre-trained NLP models for text analysis).
 5. Perform evaluation of the RAG system: Performance testing. Response accuracy measurement (e.g., using metrics like Recall@K and Precision).
+
 
     Outcome:
     Working chatbot capable of providing basic information and interacting with users.
