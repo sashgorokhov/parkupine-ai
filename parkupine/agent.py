@@ -10,6 +10,7 @@ from typing import Iterator
 from fastapi_openai_compat import ChatRequest, ChatCompletion, Choice, Message
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessageChunk, AIMessage, ToolMessage, ToolMessageChunk
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
@@ -19,7 +20,7 @@ from sqlmodel import Session, select
 
 from parkupine.auth import BaseUser
 from parkupine.settings import AppSettings
-from parkupine.tables import ParkingGarage, ParkingSpace
+from parkupine.tables import ParkingGarage, ParkingSpace, ParkingReservation
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +29,9 @@ You are a parking reservation assistant for the Parkupine parking management sys
 
 ## Core Responsibilities
 You help users with:
-- Creating, modifying, and canceling parking reservations
-- Checking parking availability for specific dates, times, and locations
-- Providing information about parking rates, hours, and policies
-- Answering questions about existing reservations
-- Explaining parking lot amenities and accessibility options
+- Creating parking reservations. Before creating reservation, collect user's plate number.
+- Providing details on available parking garages and their parking spaces.
+- Providing information about parking rates, hours, and other details.
 
 ## Guidelines
 1. Always use the provided tools to fetch real-time information about availability, pricing, and reservations
@@ -56,17 +55,11 @@ Be professional, helpful, and efficient. Users are often in a hurry when managin
 ensuring accuracy.
 """
 
-GARAGE_DETAILS_TEMPLATE = """\
-Details:
-{0.description}
-Address: {0.address}
-Working hours: {0.working_hours}
-"""
-
 
 class Context(BaseModel):
-    user: BaseUser
-    plate_number: str | None = None
+    plate_number: str | None
+    user_name: str | None
+    user_surname: str | None
 
 
 class Agent:
@@ -109,6 +102,43 @@ class Agent:
             """
             return self.get_parking_spaces_by_garage(garage_name)
 
+        def make_reservation(
+            config: RunnableConfig,
+            plate_number: str,
+            user_name: str,
+            user_surname: str,
+            parking_space_name: str,
+            reservation_period: str,
+        ) -> str:
+            """
+            Create a reservation for parking space.
+            Must ask user for:
+            - car plate number
+            - name and surname
+            - reservation period
+            - parking space name for reservation
+            """
+            return self.make_reservation(
+                config=config,
+                plate_number=plate_number,
+                user_name=user_name,
+                user_surname=user_surname,
+                parking_space_name=parking_space_name,
+                reservation_period=reservation_period,
+            )
+
+        def list_reservations(config: RunnableConfig) -> list[ParkingReservation]:
+            """
+            Return all current reservations
+            """
+            return self.list_reservations(config=config)
+
+        def check_reservation(reservation_id: int, config: RunnableConfig) -> str:
+            """
+            Check reservation status
+            """
+            return self.check_reservation(config=config, reservation_id=reservation_id)
+
         agent = create_agent(
             model=llm,
             debug=self._settings.debug,
@@ -116,24 +146,38 @@ class Agent:
             store=self._store,
             system_prompt=SYSTEM_PROMPT,
             context_schema=Context,
-            tools=[list_garages_by_name, get_garage_details_by_name, list_parking_spaces_by_garage],
+            tools=[
+                list_garages_by_name,
+                get_garage_details_by_name,
+                list_parking_spaces_by_garage,
+                make_reservation,
+                list_reservations,
+                check_reservation,
+            ],
         )
 
         return agent
 
     def handle_chat_request(self, chat_request: ChatRequest, user: BaseUser, chat_id: str) -> Iterator[ChatCompletion]:
-        context = Context(user=user)
-
         invoke_params = dict(
             input={"messages": chat_request.messages},
-            config={"configurable": {"thread_id": chat_id}},
-            context=context,
+            config={
+                "configurable": {
+                    "thread_id": chat_id,
+                    "user": user,
+                    "chat_id": chat_id,
+                }
+            },
             durability="sync",
         )
 
         if chat_request.stream:
             for chunk, _ in self._graph.stream(**invoke_params, stream_mode="messages"):
-                completion = create_chat_completion(chunk, model=chat_request.model)
+                try:
+                    completion = create_chat_completion(chunk, model=chat_request.model)
+                except Exception:
+                    logger.exception(f"Failed processing chunk {repr(chunk)}")
+                    continue
                 logger.debug(f"\t{type(chunk).__name__}({str(chunk)}) -> {completion.model_dump_json()}")
                 yield completion
         else:
@@ -161,6 +205,48 @@ class Agent:
         spaces = self._db_session.exec(select(ParkingSpace).where(ParkingSpace.garage_id == garage.id)).all()
         return list(spaces)
 
+    def make_reservation(
+        self,
+        config: RunnableConfig,
+        plate_number: str,
+        user_name: str,
+        user_surname: str,
+        parking_space_name: str,
+        reservation_period: str,
+    ) -> str:
+        parking_space = self._db_session.exec(select(ParkingSpace).where(ParkingSpace.name == parking_space_name)).one()
+
+        reservation = ParkingReservation(
+            user_id=config["configurable"]["user"].id,
+            user_name=user_name,
+            user_surname=user_surname,
+            plate_number=plate_number,
+            period=reservation_period,
+            space_id=parking_space.id,
+        )
+        self._db_session.add(reservation)
+        self._db_session.commit()
+        self._db_session.refresh(reservation)
+
+        return f"Created reservation with id={reservation.id}. Status: {reservation.status}"
+
+    def list_reservations(self, config: RunnableConfig) -> list[ParkingReservation]:
+        return list(
+            self._db_session.exec(
+                select(ParkingReservation).where(ParkingReservation.user_id == config["configurable"]["user"].id)
+            ).all()
+        )
+
+    def check_reservation(self, config: RunnableConfig, reservation_id: int) -> str:
+        reservation = self._db_session.exec(
+            select(ParkingReservation)
+            .where(ParkingReservation.id == reservation_id)
+            .where(ParkingReservation.user_id == config["configurable"]["user"].id)
+        ).one_or_none()
+        if not reservation:
+            return "Reservation not found"
+        return reservation.status
+
 
 def create_chat_completion(message: AIMessage | ToolMessage, model: str) -> ChatCompletion:
     """
@@ -171,7 +257,7 @@ def create_chat_completion(message: AIMessage | ToolMessage, model: str) -> Chat
     delta: Message | None = None
     msg: Message | None = Message(
         role="tool" if isinstance(message, ToolMessage) else "assistant",
-        content=message.content,
+        content=message.content or "",
         tool_calls=getattr(message, "tool_calls", None),
         refusal=message.additional_kwargs.get("refusal", None),
     )

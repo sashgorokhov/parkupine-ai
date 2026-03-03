@@ -16,7 +16,6 @@ from sqlmodel import SQLModel, Field, create_engine, Session
 
 from parkupine.settings import AppSettings, setup_logging
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,8 +30,19 @@ class ParkingGarage(SQLModel, table=True):
 class ParkingSpace(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     garage_id: int | None = Field(default=None, foreign_key="parkinggarage.id")
-    name: str = Field()
+    name: str = Field(unique=True)
     price: int = Field()
+
+
+class ParkingReservation(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True)
+    user_name: str = Field()
+    user_surname: str = Field()
+    plate_number: str = Field()
+    period: str = Field()
+    space_id: int = Field(default=None, foreign_key="parkingspace.id")
+    status: str = Field(default="on_review")
 
 
 def get_engine(settings: AppSettings) -> Engine:
