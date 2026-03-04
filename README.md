@@ -25,6 +25,8 @@ on separate workers, with communication through redis queue and channels.
 - Asynchronous LLM invocation with redis workers! Scalability!
 - Fully dockerized and container native!
 - 86% artisanal hand-crafted code!
+- Comprehensive test coverage with unit, integration and system evaluation tests!
+- pre-commit hooks, black!
 
 ## Usage
 

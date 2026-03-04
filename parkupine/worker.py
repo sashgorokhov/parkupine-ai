@@ -59,27 +59,36 @@ async def submit_chat_request(
     async with redis.pubsub() as ps:
         await ps.subscribe(work_item.message_id)
 
-        while True:
-            # {"type": ..., "pattern": ..., "channel": ..., "data": ...}
-            try:
-                message: dict[str, Any] | None = await ps.get_message(ignore_subscribe_messages=True, timeout=10.0)
-            except asyncio.TimeoutError:
-                logger.error(f"Timed out while waiting for chat message response at {work_item.message_id=}")
-                # Perhaps we should return artificial ChatCompletion with something like "Model Timed Out"
-                return
+        try:
+            async with asyncio.timeout(30.0):
+                while True:
+                    # {"type": ..., "pattern": ..., "channel": ..., "data": ...}
+                    message: dict[str, Any] | None = await ps.get_message(ignore_subscribe_messages=True, timeout=10.0)
 
-            if not message:
-                continue
+                    if not message:
+                        continue
 
-            if message["data"] == GENERATION_COMPLETE.encode():
-                return
+                    if message["data"] == GENERATION_COMPLETE.encode():
+                        return
 
-            chat_completion = ChatCompletion.model_validate_json(message["data"])
+                    chat_completion = ChatCompletion.model_validate_json(message["data"])
 
+                    if chat_request.stream:
+                        yield _completion_to_sse(chat_completion)
+                    else:
+                        yield chat_completion
+        except TimeoutError:
+            logger.error(f"Timed out while waiting for model response {message_id=}")
+            completion = manual_chat_completion(
+                message=f"Timed out while waiting for model response. Trace id: {message_id}",
+                model=chat_request.model,
+                stream=True,
+            )
+            completion.choices[0].finish_reason = "stop"
             if chat_request.stream:
-                yield _completion_to_sse(chat_completion)
+                yield _completion_to_sse(completion)
             else:
-                yield chat_completion
+                yield completion
 
 
 class Worker:
@@ -149,6 +158,7 @@ class Worker:
                 model=chat_work_item.chat_request.model,
                 stream=chat_work_item.chat_request.stream,
             )
+            completion.choices[0].finish_reason = "stop"
             self.redis.publish(chat_work_item.message_id, completion.model_dump_json())
         finally:
             self.redis.publish(chat_work_item.message_id, GENERATION_COMPLETE)

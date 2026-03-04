@@ -1,5 +1,6 @@
+import builtins
 import contextlib
-from typing import Any, Sequence, Callable
+from typing import Any, Sequence, Callable, Iterator
 from unittest import mock
 from unittest.mock import AsyncMock, Mock
 
@@ -8,16 +9,15 @@ from fastapi.routing import _DefaultLifespan
 from fastapi.testclient import TestClient
 from fastapi_openai_compat import ChatRequest
 from langchain_core.callbacks import CallbackManagerForLLMRun
-from langchain_core.language_models import GenericFakeChatModel, BaseChatModel, LanguageModelInput
-from langchain_core.language_models.fake_chat_models import FakeChatModel
-from langchain_core.messages import BaseMessage, AIMessage
-from langchain_core.outputs import ChatResult, ChatGeneration
-from langchain_core.runnables import Runnable, RunnableLambda
-from langchain_core.runnables.base import coerce_to_runnable
+from langchain_core.language_models import BaseChatModel, LanguageModelInput
+from langchain_core.messages import BaseMessage, AIMessage, AIMessageChunk
+from langchain_core.outputs import ChatResult, ChatGeneration, ChatGenerationChunk
+from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.memory import InMemoryStore
 from pydantic import Field
+from redis import Redis
 from sqlmodel import Session, create_engine
 
 from parkupine import tables
@@ -26,6 +26,7 @@ from parkupine.auth import BaseUser
 from parkupine.context import AppContext
 from parkupine.server import app
 from parkupine.settings import AppSettings
+from parkupine.worker import ChatWorkItem, Worker
 
 
 @pytest.fixture()
@@ -117,6 +118,17 @@ class MockChatModel(BaseChatModel):
         generation = ChatGeneration(message=message_)
         return ChatResult(generations=[generation])
 
+    def _stream(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> Iterator[ChatGenerationChunk]:
+        for message in self.mock._generate(messages):
+            message_ = AIMessageChunk(content=message) if isinstance(message, str) else message
+            yield ChatGenerationChunk(message=message_)
+
     @property
     def _llm_type(self) -> str:
         return self.__class__.__name__
@@ -142,3 +154,23 @@ def agent(db_session, app_settings, model):
     checkpointer = InMemorySaver()
 
     return Agent(db_session=db_session, store=store, checkpointer=checkpointer, settings=app_settings, model=model)
+
+
+@pytest.fixture()
+def chat_work_item(user, chat_request):
+    return ChatWorkItem(
+        message_id="test-message-id",
+        chat_id="test-chat-id",
+        user=user,
+        chat_request=chat_request,
+    )
+
+
+@pytest.fixture()
+def sync_redis():
+    return Mock(spec=Redis)
+
+
+@pytest.fixture()
+def worker(agent, sync_redis):
+    return Worker(agent=agent, redis=sync_redis)

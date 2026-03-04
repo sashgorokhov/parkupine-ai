@@ -1,35 +1,14 @@
 from unittest.mock import Mock
 
 import pytest
-from redis import Redis
 
 from parkupine.agent import manual_chat_completion, Agent
-from parkupine.worker import submit_chat_request, GENERATION_COMPLETE, ChatWorkItem, Worker
-
-
-@pytest.fixture()
-def chat_work_item(user, chat_request):
-    return ChatWorkItem(
-        message_id="test-message-id",
-        chat_id="test-chat-id",
-        user=user,
-        chat_request=chat_request,
-    )
+from parkupine.worker import submit_chat_request, GENERATION_COMPLETE
 
 
 @pytest.fixture()
 def agent():
     return Mock(spec=Agent)
-
-
-@pytest.fixture()
-def sync_redis():
-    return Mock(spec=Redis)
-
-
-@pytest.fixture()
-def worker(agent, sync_redis):
-    return Worker(agent=agent, redis=sync_redis)
 
 
 @pytest.mark.asyncio
