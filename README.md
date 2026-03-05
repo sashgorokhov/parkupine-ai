@@ -31,7 +31,7 @@ on separate workers, with communication through redis queue and channels.
 
 ## Usage
 
-![demo](assets/demo.mp4)
+![demo](assets/demo.gif)
 
 Prerequisites:
 - OpenAI api key
