@@ -79,8 +79,8 @@ def chat_request():
 
 
 @pytest.fixture()
-def engine():
-    engine = create_engine("sqlite:///:memory:")
+def engine(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path}/test.db")
     tables.populate_metadata(engine)
     return engine
 

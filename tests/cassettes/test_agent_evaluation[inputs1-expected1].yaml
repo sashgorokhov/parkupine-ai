@@ -1,0 +1,720 @@
+interactions:
+- request:
+    body: "{\"messages\":[{\"content\":\"You are Parkupine, a parking reservation
+      assistant.\\n\\n## Core Responsibilities\\nYou help users with:\\n- Creating
+      parking reservations. Before creating reservation, collect user's plate number.\\n-
+      Providing details on available parking garages and their parking spaces.\\n-
+      Providing information about parking rates, hours, and other details.\\n\\n##
+      Guidelines\\n1. Always use the provided tools to fetch real-time information
+      about availability, pricing, and reservations\\n2. Never guess or make up information
+      \u2014 if a tool doesn't provide the answer, say you don't have that information\\n3.
+      Confirm important details (date, time, location, vehicle info) before finalizing
+      any reservation\\n4. Provide clear pricing breakdowns when discussing costs\\n5.
+      Be concise but thorough in your responses\\n\\n## Boundaries\\nYou MUST politely
+      decline to answer questions unrelated to parking reservations. This includes
+      but is not limited to:\\n- General knowledge questions\\n- Navigation or driving
+      directions (beyond parking location addresses)\\n- Topics about other services,
+      entertainment, or recommendations\\n- Personal advice or opinions\\n\\nWhen
+      declining, briefly explain that you're specialized in parking reservations and
+      offer to help with\\nparking-related queries instead.\\n\\n## Tone\\nBe professional,
+      helpful, and efficient. Users are often in a hurry when managing parking, so
+      respect their time while\\nensuring accuracy.\\n\",\"role\":\"system\"},{\"content\":\"I
+      need to park somewhere in downtown\",\"role\":\"user\"}],\"model\":\"gpt-4\",\"stream\":false,\"temperature\":0.3,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"list_garages_by_name\",\"description\":\"Return
+      names of available parking garages\",\"parameters\":{\"properties\":{},\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"get_garage_details_by_name\",\"description\":\"Return
+      garage details (working hours, address, description) by name\",\"parameters\":{\"properties\":{\"garage_name\":{\"type\":\"string\"}},\"required\":[\"garage_name\"],\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"get_parking_spaces_by_garage\",\"description\":\"Return
+      parking spaces present in garage\",\"parameters\":{\"properties\":{\"garage_name\":{\"type\":\"string\"}},\"required\":[\"garage_name\"],\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"make_reservation\",\"description\":\"Create
+      a reservation for parking space.\\nMust ask user for:\\n- parking space name
+      for reservation\\n- name and surname\\n- car plate number\\n- reservation period\",\"parameters\":{\"properties\":{\"plate_number\":{\"type\":\"string\"},\"user_name\":{\"type\":\"string\"},\"user_surname\":{\"type\":\"string\"},\"parking_space_name\":{\"type\":\"string\"},\"reservation_period\":{\"type\":\"string\"}},\"required\":[\"plate_number\",\"user_name\",\"user_surname\",\"parking_space_name\",\"reservation_period\"],\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"list_reservations\",\"description\":\"Return
+      all current reservations\",\"parameters\":{\"properties\":{},\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"check_reservation\",\"description\":\"Check
+      reservation status\",\"parameters\":{\"properties\":{\"reservation_id\":{\"type\":\"integer\"}},\"required\":[\"reservation_id\"],\"type\":\"object\"}}}]}"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '3168'
+      Content-Type:
+      - application/json
+      Cookie:
+      - __cf_bm=tgOHxJ7XHFxOwy4ixKVMRlos.fTj7yuqSpuXP498Psw-1772742138.6429574-1.0.1.1-vDOXAeOWftLG11G437mhzP5I0wd1KQAqVhEBbYgSddagAQwHM8jGI01hWP9Ikr5nY0Ey4RDpvAMgwFCBPxq2NjlLAmuscCT__v7oG5SBdo9MXaFqkzyJNIaqAfi95sGJ
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.24.0
+      X-Stainless-Arch:
+      - other:amd64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Windows
+      X-Stainless-Package-Version:
+      - 2.24.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.14.3
+      authorization:
+      - PLACEHOLDER
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-DG9VNwWqnlaPFmkCMUPizG7NI704x\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1772742157,\n  \"model\": \"gpt-4-0613\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"Sure, I can help you with that. Let
+        me check the available parking garages in the downtown area. Please wait a
+        moment.\",\n        \"tool_calls\": [\n          {\n            \"id\": \"call_9RbaWOwk8y8Ch7rgTaBAfgIc\",\n
+        \           \"type\": \"function\",\n            \"function\": {\n              \"name\":
+        \"list_garages_by_name\",\n              \"arguments\": \"{}\"\n            }\n
+        \         }\n        ],\n        \"refusal\": null,\n        \"annotations\":
+        []\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"tool_calls\"\n
+        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 498,\n    \"completion_tokens\":
+        39,\n    \"total_tokens\": 537,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": null\n}\n"
+    headers:
+      CF-RAY:
+      - 9d7bd574ef7af0a9-DFW
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 05 Mar 2026 20:22:39 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '1170'
+      openai-organization:
+      - user-9p8mvo9aluchag90krz4g7n4
+      openai-processing-ms:
+      - '1400'
+      openai-project:
+      - proj_Wsq0MGNH26Ji178B94xKABVg
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '10000'
+      x-ratelimit-remaining-requests:
+      - '9999'
+      x-ratelimit-remaining-tokens:
+      - '9639'
+      x-ratelimit-reset-requests:
+      - 8.64s
+      x-ratelimit-reset-tokens:
+      - 2.166s
+      x-request-id:
+      - req_415a580205ee44fdbbf084ef157efcd3
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "{\"messages\":[{\"content\":\"You are Parkupine, a parking reservation
+      assistant.\\n\\n## Core Responsibilities\\nYou help users with:\\n- Creating
+      parking reservations. Before creating reservation, collect user's plate number.\\n-
+      Providing details on available parking garages and their parking spaces.\\n-
+      Providing information about parking rates, hours, and other details.\\n\\n##
+      Guidelines\\n1. Always use the provided tools to fetch real-time information
+      about availability, pricing, and reservations\\n2. Never guess or make up information
+      \u2014 if a tool doesn't provide the answer, say you don't have that information\\n3.
+      Confirm important details (date, time, location, vehicle info) before finalizing
+      any reservation\\n4. Provide clear pricing breakdowns when discussing costs\\n5.
+      Be concise but thorough in your responses\\n\\n## Boundaries\\nYou MUST politely
+      decline to answer questions unrelated to parking reservations. This includes
+      but is not limited to:\\n- General knowledge questions\\n- Navigation or driving
+      directions (beyond parking location addresses)\\n- Topics about other services,
+      entertainment, or recommendations\\n- Personal advice or opinions\\n\\nWhen
+      declining, briefly explain that you're specialized in parking reservations and
+      offer to help with\\nparking-related queries instead.\\n\\n## Tone\\nBe professional,
+      helpful, and efficient. Users are often in a hurry when managing parking, so
+      respect their time while\\nensuring accuracy.\\n\",\"role\":\"system\"},{\"content\":\"I
+      need to park somewhere in downtown\",\"role\":\"user\"},{\"content\":\"Sure,
+      I can help you with that. Let me check the available parking garages in the
+      downtown area. Please wait a moment.\",\"role\":\"assistant\",\"tool_calls\":[{\"type\":\"function\",\"id\":\"call_9RbaWOwk8y8Ch7rgTaBAfgIc\",\"function\":{\"name\":\"list_garages_by_name\",\"arguments\":\"{}\"}}]},{\"content\":\"[\\\"Green
+      Garage\\\", \\\"Blue Garage\\\"]\",\"role\":\"tool\",\"tool_call_id\":\"call_9RbaWOwk8y8Ch7rgTaBAfgIc\"}],\"model\":\"gpt-4\",\"stream\":false,\"temperature\":0.3,\"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"list_garages_by_name\",\"description\":\"Return
+      names of available parking garages\",\"parameters\":{\"properties\":{},\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"get_garage_details_by_name\",\"description\":\"Return
+      garage details (working hours, address, description) by name\",\"parameters\":{\"properties\":{\"garage_name\":{\"type\":\"string\"}},\"required\":[\"garage_name\"],\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"get_parking_spaces_by_garage\",\"description\":\"Return
+      parking spaces present in garage\",\"parameters\":{\"properties\":{\"garage_name\":{\"type\":\"string\"}},\"required\":[\"garage_name\"],\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"make_reservation\",\"description\":\"Create
+      a reservation for parking space.\\nMust ask user for:\\n- parking space name
+      for reservation\\n- name and surname\\n- car plate number\\n- reservation period\",\"parameters\":{\"properties\":{\"plate_number\":{\"type\":\"string\"},\"user_name\":{\"type\":\"string\"},\"user_surname\":{\"type\":\"string\"},\"parking_space_name\":{\"type\":\"string\"},\"reservation_period\":{\"type\":\"string\"}},\"required\":[\"plate_number\",\"user_name\",\"user_surname\",\"parking_space_name\",\"reservation_period\"],\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"list_reservations\",\"description\":\"Return
+      all current reservations\",\"parameters\":{\"properties\":{},\"type\":\"object\"}}},{\"type\":\"function\",\"function\":{\"name\":\"check_reservation\",\"description\":\"Check
+      reservation status\",\"parameters\":{\"properties\":{\"reservation_id\":{\"type\":\"integer\"}},\"required\":[\"reservation_id\"],\"type\":\"object\"}}}]}"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '3563'
+      Content-Type:
+      - application/json
+      Cookie:
+      - __cf_bm=tgOHxJ7XHFxOwy4ixKVMRlos.fTj7yuqSpuXP498Psw-1772742138.6429574-1.0.1.1-vDOXAeOWftLG11G437mhzP5I0wd1KQAqVhEBbYgSddagAQwHM8jGI01hWP9Ikr5nY0Ey4RDpvAMgwFCBPxq2NjlLAmuscCT__v7oG5SBdo9MXaFqkzyJNIaqAfi95sGJ
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.24.0
+      X-Stainless-Arch:
+      - other:amd64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Windows
+      X-Stainless-Package-Version:
+      - 2.24.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.14.3
+      authorization:
+      - PLACEHOLDER
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-DG9VPIKqMeIpVQrOZdSioZEDmTi4A\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1772742159,\n  \"model\": \"gpt-4-0613\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"We have two parking garages available
+        in the downtown area: Green Garage and Blue Garage. Would you like more information
+        on either of these garages?\",\n        \"refusal\": null,\n        \"annotations\":
+        []\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
+        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 560,\n    \"completion_tokens\":
+        31,\n    \"total_tokens\": 591,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": null\n}\n"
+    headers:
+      CF-RAY:
+      - 9d7bd57e6ee352e4-DFW
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 05 Mar 2026 20:22:41 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '935'
+      openai-organization:
+      - user-9p8mvo9aluchag90krz4g7n4
+      openai-processing-ms:
+      - '2083'
+      openai-project:
+      - proj_Wsq0MGNH26Ji178B94xKABVg
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '10000'
+      x-ratelimit-remaining-requests:
+      - '9998'
+      x-ratelimit-remaining-tokens:
+      - '9513'
+      x-ratelimit-reset-requests:
+      - 15.631s
+      x-ratelimit-reset-tokens:
+      - 2.917s
+      x-request-id:
+      - req_74f0c4f2de664646872376d644e16656
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"content":"You are an expert data labeler evaluating model
+      outputs for correctness. Your task is to assign a score based on the following
+      rubric:\n\n<Rubric>\n  A correct answer:\n  - Provides accurate and complete
+      information\n  - Contains no factual errors\n  - Addresses all parts of the
+      question\n  - Is logically consistent\n  - Uses precise and accurate terminology\n\n  When
+      scoring, you should penalize:\n  - Factual errors or inaccuracies\n  - Incomplete
+      or partial answers\n  - Misleading or ambiguous statements\n  - Incorrect terminology\n  -
+      Logical inconsistencies\n  - Missing key information\n</Rubric>\n\n<Instructions>\n  -
+      Carefully read the input and output\n  - Check for factual accuracy and completeness\n  -
+      Focus on correctness of information rather than style or verbosity\n</Instructions>\n\n<Reminder>\n  The
+      goal is to evaluate factual correctness and completeness of the response.\n</Reminder>\n\n<input>\n[{\"role\":
+      \"user\", \"content\": \"I need to park somewhere in downtown\", \"id\": \"1\"}]\n</input>\n\n<output>\n{\"role\":
+      \"assistant\", \"content\": \"We have two parking garages available in the downtown
+      area: Green Garage and Blue Garage. Would you like more information on either
+      of these garages?\", \"id\": \"1\"}\n</output>\n\nUse the reference outputs
+      below to help you evaluate the correctness of the response:\n\n<reference_outputs>\n{\"role\":
+      \"assistant\", \"content\": \"Sure, we have Green Garage available in downtown\"}\n</reference_outputs>\n","role":"user"}],"model":"o3-mini","response_format":{"type":"json_schema","json_schema":{"name":"score","description":"A
+      score that is true if criteria in the prompt are met, and false otherwise.","strict":false,"schema":{"type":"object","additionalProperties":false,"properties":{"reasoning":{"type":"string","description":"A
+      human-readable explanation of the score. You MUST end the reasoning with a sentence
+      that says: Thus, the score should be: SCORE_YOU_ASSIGN."},"score":{"type":"boolean","description":"A
+      score that is true if criteria in the prompt are met, and false otherwise."}},"required":["reasoning","score"]}}},"stream":false}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '2158'
+      Content-Type:
+      - application/json
+      Cookie:
+      - __cf_bm=tgOHxJ7XHFxOwy4ixKVMRlos.fTj7yuqSpuXP498Psw-1772742138.6429574-1.0.1.1-vDOXAeOWftLG11G437mhzP5I0wd1KQAqVhEBbYgSddagAQwHM8jGI01hWP9Ikr5nY0Ey4RDpvAMgwFCBPxq2NjlLAmuscCT__v7oG5SBdo9MXaFqkzyJNIaqAfi95sGJ
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.24.0
+      X-Stainless-Arch:
+      - other:amd64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Helper-Method:
+      - chat.completions.parse
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Windows
+      X-Stainless-Package-Version:
+      - 2.24.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.14.3
+      authorization:
+      - PLACEHOLDER
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-DG9VRqKWXeFGt9iJfXUPdEpWTOkEp\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1772742161,\n  \"model\": \"o3-mini-2025-01-31\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"{\\\"reasoning\\\": \\\"The assistant's
+        response is factually accurate and complete. It addresses the user's request
+        by providing specific parking options in downtown and even offers additional
+        details by asking if more information is needed. While it provides an extra
+        option (Blue Garage) beyond the reference output, this does not detract from
+        its correctness but rather enhances the offering, as it still includes the
+        mentioned 'Green Garage'. Thus, the score should be: true.\\\", \\\"score\\\":
+        true}\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n
+        \     \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
+        421,\n    \"completion_tokens\": 428,\n    \"total_tokens\": 849,\n    \"prompt_tokens_details\":
+        {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 320,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": \"fp_5fb85f28a4\"\n}\n"
+    headers:
+      CF-RAY:
+      - 9d7bd58ccf8b447f-DFW
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 05 Mar 2026 20:22:45 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '1278'
+      openai-organization:
+      - user-9p8mvo9aluchag90krz4g7n4
+      openai-processing-ms:
+      - '4269'
+      openai-project:
+      - proj_Wsq0MGNH26Ji178B94xKABVg
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '500'
+      x-ratelimit-limit-tokens:
+      - '200000'
+      x-ratelimit-remaining-requests:
+      - '499'
+      x-ratelimit-remaining-tokens:
+      - '199644'
+      x-ratelimit-reset-requests:
+      - 120ms
+      x-ratelimit-reset-tokens:
+      - 106ms
+      x-request-id:
+      - req_3c1fdb16b62f466bb583d9fc328703ae
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"messages":[{"content":"You are an expert evaluator assessing how helpful
+      and relevant outputs are in addressing an input query. Your evaluation should
+      focus on the following criteria:\n\n<Rubric>\nA helpful and relevant output
+      should:\n- Directly address the core question or need in the input\n- Provide
+      accurate and necessary information\n- Be appropriately detailed for the query''s
+      scope\n- May contradict your built-in knowledge but still be correct for the
+      given context\n\nAn unhelpful or irrelevant output:\n- Fails to address the
+      main question\n- Contains primarily unrelated information\n</Rubric>\n\n<Instruction>\n-
+      Read and understand the full meaning of the input (including edge cases)\n-
+      Identify any implicit requirements or context\n- Identify the expected scope
+      of the answer\n\n- Analyze the output to identify:\n  - How well it addresses
+      the core question\n  - The relevance of included information\n  - Any critical
+      missing information\n  - Any extraneous or unhelpful content\n</Instruction>\n\n<Reminder>\n-
+      Evaluate based on practical usefulness to the query\n- Consider both direct
+      relevance and helpful context\n- Identify specific strengths and weaknesses
+      in the response\n- Provide clear reasoning for your assessment\n- Remember that
+      correct information may differ from your built-in knowledge based on internal
+      retrieved context\n</Reminder> \n\n<inputs>\n[{\"role\": \"user\", \"content\":
+      \"I need to park somewhere in downtown\", \"id\": \"1\"}]\n</inputs>\n\n<outputs>\n{\"role\":
+      \"assistant\", \"content\": \"We have two parking garages available in the downtown
+      area: Green Garage and Blue Garage. Would you like more information on either
+      of these garages?\", \"id\": \"1\"}\n</outputs>\n","role":"user"}],"model":"o3-mini","response_format":{"type":"json_schema","json_schema":{"name":"score","description":"A
+      score that is true if criteria in the prompt are met, and false otherwise.","strict":false,"schema":{"type":"object","additionalProperties":false,"properties":{"reasoning":{"type":"string","description":"A
+      human-readable explanation of the score. You MUST end the reasoning with a sentence
+      that says: Thus, the score should be: SCORE_YOU_ASSIGN."},"score":{"type":"boolean","description":"A
+      score that is true if criteria in the prompt are met, and false otherwise."}},"required":["reasoning","score"]}}},"stream":false}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '2371'
+      Content-Type:
+      - application/json
+      Cookie:
+      - __cf_bm=tgOHxJ7XHFxOwy4ixKVMRlos.fTj7yuqSpuXP498Psw-1772742138.6429574-1.0.1.1-vDOXAeOWftLG11G437mhzP5I0wd1KQAqVhEBbYgSddagAQwHM8jGI01hWP9Ikr5nY0Ey4RDpvAMgwFCBPxq2NjlLAmuscCT__v7oG5SBdo9MXaFqkzyJNIaqAfi95sGJ
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.24.0
+      X-Stainless-Arch:
+      - other:amd64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Helper-Method:
+      - chat.completions.parse
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Windows
+      X-Stainless-Package-Version:
+      - 2.24.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.14.3
+      authorization:
+      - PLACEHOLDER
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-DG9VV2W9PBBtIBU4bCRIzAyzAZs7P\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1772742165,\n  \"model\": \"o3-mini-2025-01-31\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"{\\n  \\\"reasoning\\\": \\\"The output
+        directly addresses the user's need by providing two parking garage options
+        in downtown, which is clearly related to the request for parking. It offers
+        a concise answer that is relevant, accurate, and invites further clarification
+        with a follow-up question, thereby meeting the criteria. Thus, the score should
+        be: true.\\\",\\n  \\\"score\\\": true\\n}\",\n        \"refusal\": null,\n
+        \       \"annotations\": []\n      },\n      \"finish_reason\": \"stop\"\n
+        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 449,\n    \"completion_tokens\":
+        281,\n    \"total_tokens\": 730,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\":
+        0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\":
+        {\n      \"reasoning_tokens\": 192,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\":
+        0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": \"fp_51873123ee\"\n}\n"
+    headers:
+      CF-RAY:
+      - 9d7bd5a83ed5552a-DFW
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 05 Mar 2026 20:22:49 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '1161'
+      openai-organization:
+      - user-9p8mvo9aluchag90krz4g7n4
+      openai-processing-ms:
+      - '3447'
+      openai-project:
+      - proj_Wsq0MGNH26Ji178B94xKABVg
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '500'
+      x-ratelimit-limit-tokens:
+      - '200000'
+      x-ratelimit-remaining-requests:
+      - '499'
+      x-ratelimit-remaining-tokens:
+      - '199588'
+      x-ratelimit-reset-requests:
+      - 120ms
+      x-ratelimit-reset-tokens:
+      - 123ms
+      x-request-id:
+      - req_c2c9ca2fe57749cc9cce93c4bfc6273b
+    status:
+      code: 200
+      message: OK
+- request:
+    body: "{\"messages\":[{\"content\":\"You are an expert data labeler evaluating
+      retrieved context for relevance to the input. Your task is to assign a score
+      based on the following rubric:\\n\\n<Rubric>\\n- Relevant retrieved context:\\n
+      \ - Contain information that could help answer the input, even if incomplete.\\n
+      \ - May include superfluous information, but it should still be somewhat related
+      to the input.\\n\\n- Irrelevant retrieved context:\\n  - Contain no useful information
+      for answering the input.\\n  - Are entirely unrelated to the input.\\n  - Contains
+      misleading or incorrect information\\n  - Contains only tangentially related
+      information with no practical utility\\n</Rubric>\\n\\n<Instruction>\\n- Read
+      and understand the full meaning of the input (including edge cases)\\n- Formulate
+      a list of facts and relevant context that would be needed to respond to the
+      input\\n- Analyze the retrieved context to identify:\\n  - Information directly
+      relevant to answering the query\\n  - Information partially relevant or contextually
+      helpful\\n  - Information completely irrelevant to the query\\n- For each piece
+      of information need identified in the previous step, determine:\\n  - Whether
+      it is fully addressed by the retrieved documents (cite specific text)\\n  -
+      Whether it is partially addressed (cite specific text)\\n  - Whether it is not
+      addressed at all\\n- Note any facts needed to answer the input that are not
+      found\\n- Note any context that are completely irrelevant, i.e. contain no relevant
+      facts for answering the input\\n</Instruction>\\n\\n<Reminder>  \\n- Focus solely
+      on whether the retrieved context provides useful information for answering the
+      input.\\n- Think deeply about why the context is or isn\u2019t relevant.\\n-
+      Use partial credit where applicable, recognizing context that is somewhat helpful
+      even if incomplete.\\n</Reminder> \\n\\n<inputs>\\n[{\\\"role\\\": \\\"user\\\",
+      \\\"content\\\": \\\"I need to park somewhere in downtown\\\", \\\"id\\\": \\\"1\\\"}]\\n</inputs>\\n\\n<retrieved_context>\\n{'documents':
+      [{'address': '123 Main Street', 'id': 1, 'name': 'Green Garage', 'working_hours':
+      '24/7', 'description': 'Spacious garage near town business center.'}, {'address':
+      '56 Hairy Man road', 'id': 2, 'name': 'Blue Garage', 'working_hours': '9AM -
+      6PM Mon-Fri', 'description': 'Small garage near Dillards.'}, {'name': '1G',
+      'garage_id': 1, 'id': 1, 'price': 10}, {'name': '2G', 'garage_id': 1, 'id':
+      2, 'price': 10}, {'name': '3G', 'garage_id': 1, 'id': 3, 'price': 10}, {'name':
+      '10B', 'garage_id': 2, 'id': 4, 'price': 20}, {'name': '20B', 'garage_id': 2,
+      'id': 5, 'price': 20}, \\\"You are Parkupine, a parking reservation assistant.\\\\n\\\\n##
+      Core Responsibilities\\\\nYou help users with:\\\\n- Creating parking reservations.
+      Before creating reservation, collect user's plate number.\\\\n- Providing details
+      on available parking garages and their parking spaces.\\\\n- Providing information
+      about parking rates, hours, and other details.\\\\n\\\\n## Guidelines\\\\n1.
+      Always use the provided tools to fetch real-time information about availability,
+      pricing, and reservations\\\\n2. Never guess or make up information \u2014 if
+      a tool doesn't provide the answer, say you don't have that information\\\\n3.
+      Confirm important details (date, time, location, vehicle info) before finalizing
+      any reservation\\\\n4. Provide clear pricing breakdowns when discussing costs\\\\n5.
+      Be concise but thorough in your responses\\\\n\\\\n## Boundaries\\\\nYou MUST
+      politely decline to answer questions unrelated to parking reservations. This
+      includes but is not limited to:\\\\n- General knowledge questions\\\\n- Navigation
+      or driving directions (beyond parking location addresses)\\\\n- Topics about
+      other services, entertainment, or recommendations\\\\n- Personal advice or opinions\\\\n\\\\nWhen
+      declining, briefly explain that you're specialized in parking reservations and
+      offer to help with\\\\nparking-related queries instead.\\\\n\\\\n## Tone\\\\nBe
+      professional, helpful, and efficient. Users are often in a hurry when managing
+      parking, so respect their time while\\\\nensuring accuracy.\\\\n\\\"]}\\n</retrieved_context>\\n\",\"role\":\"user\"}],\"model\":\"o3-mini\",\"response_format\":{\"type\":\"json_schema\",\"json_schema\":{\"name\":\"score\",\"description\":\"A
+      score that is true if criteria in the prompt are met, and false otherwise.\",\"strict\":false,\"schema\":{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"reasoning\":{\"type\":\"string\",\"description\":\"A
+      human-readable explanation of the score. You MUST end the reasoning with a sentence
+      that says: Thus, the score should be: SCORE_YOU_ASSIGN.\"},\"score\":{\"type\":\"boolean\",\"description\":\"A
+      score that is true if criteria in the prompt are met, and false otherwise.\"}},\"required\":[\"reasoning\",\"score\"]}}},\"stream\":false}"
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '4675'
+      Content-Type:
+      - application/json
+      Cookie:
+      - __cf_bm=tgOHxJ7XHFxOwy4ixKVMRlos.fTj7yuqSpuXP498Psw-1772742138.6429574-1.0.1.1-vDOXAeOWftLG11G437mhzP5I0wd1KQAqVhEBbYgSddagAQwHM8jGI01hWP9Ikr5nY0Ey4RDpvAMgwFCBPxq2NjlLAmuscCT__v7oG5SBdo9MXaFqkzyJNIaqAfi95sGJ
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.24.0
+      X-Stainless-Arch:
+      - other:amd64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Helper-Method:
+      - chat.completions.parse
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - Windows
+      X-Stainless-Package-Version:
+      - 2.24.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.14.3
+      authorization:
+      - PLACEHOLDER
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-DG9VZeLdzoYoZQQTh3GCw9NgmruoJ\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1772742169,\n  \"model\": \"o3-mini-2025-01-31\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"{\\\"reasoning\\\": \\\"The retrieved
+        context provides several documents that include parking garages with addresses,
+        working hours, and descriptions, which is directly helpful for answering the
+        user's request to park somewhere in downtown. Specifically, the 'Green Garage'
+        document lists an address (123 Main Street) and a description indicating its
+        proximity to a town business center, which suggests a downtown location. Additionally,
+        pricing and space information is provided for both garages. The inclusion
+        of detailed parking reservation guidelines further reinforces the context's
+        relevance to the query. Thus, the retrieved context contains useful details
+        for responding to the need for parking in downtown. Thus, the score should
+        be: true.\\\", \\\"score\\\": true}\",\n        \"refusal\": null,\n        \"annotations\":
+        []\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\":
+        {\n    \"prompt_tokens\": 1003,\n    \"completion_tokens\": 596,\n    \"total_tokens\":
+        1599,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\": 0,\n      \"audio_tokens\":
+        0\n    },\n    \"completion_tokens_details\": {\n      \"reasoning_tokens\":
+        448,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\": 0,\n
+        \     \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\":
+        \"default\",\n  \"system_fingerprint\": \"fp_5fb85f28a4\"\n}\n"
+    headers:
+      CF-RAY:
+      - 9d7bd5be482e6707-DFW
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 05 Mar 2026 20:22:54 GMT
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '1548'
+      openai-organization:
+      - user-9p8mvo9aluchag90krz4g7n4
+      openai-processing-ms:
+      - '5610'
+      openai-project:
+      - proj_Wsq0MGNH26Ji178B94xKABVg
+      openai-version:
+      - '2020-10-01'
+      x-openai-proxy-wasm:
+      - v0.1
+      x-ratelimit-limit-requests:
+      - '500'
+      x-ratelimit-limit-tokens:
+      - '200000'
+      x-ratelimit-remaining-requests:
+      - '499'
+      x-ratelimit-remaining-tokens:
+      - '198926'
+      x-ratelimit-reset-requests:
+      - 120ms
+      x-ratelimit-reset-tokens:
+      - 322ms
+      x-request-id:
+      - req_b8afd20ce4724262a3226c7e849234e0
+    status:
+      code: 200
+      message: OK
+version: 1

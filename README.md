@@ -14,6 +14,7 @@ Some of the used software:
 - [fastapi](https://fastapi.tiangolo.com/)
 - [langchain](https://docs.langchain.com/oss/python/langchain/overview)
 - [valkey](https://valkey.io/)
+- [openevals](https://github.com/langchain-ai/openevals)
 
 Under the hood, this is a Open WebUI frontend with FastApi OpenAI-compatible backend. Agent logic is executed asynchronously
 on separate workers, with communication through redis queue and channels.
@@ -30,6 +31,8 @@ on separate workers, with communication through redis queue and channels.
 
 ## Usage
 
+![demo](assets/demo.mp4)
+
 Prerequisites:
 - OpenAI api key
 - docker and docker compose
@@ -39,6 +42,16 @@ Prerequisites:
 3. Run `docker-compose exec worker python -m parkupine.tables`. This will pre-populate DB with some data. This step is idempotent.
 4. Access Open WebUI at http://localhost:8080/ and signup with any name, email and password
 
+
+Running tests:
+```shell
+pytest tests/unit tests/integration
+```
+
+Running agent evaluation tests:
+```shell
+TESTING_OPENAI_API_KEY="..." pytest tests/system
+```
 
 Cleanup:
 ```shell

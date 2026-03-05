@@ -62,14 +62,17 @@ def populate_data(engine: Engine) -> None:
         ParkingGarage(
             id=1,
             name="Green Garage",
-            description="Spacious garage near town business center.",
+            description="Spacious garage near town business center. "
+            "Discounts for veterans, cats and dogs on christmas only. No cancellations allowed.",
             address="123 Main Street",
             working_hours="24/7",
         ),
         ParkingGarage(
             id=2,
             name="Blue Garage",
-            description="Small garage near Dillards.",
+            description="Small garage near Dillards. Discounted rates during weekends. "
+            "Cancellations allowed in 24h window. No security, park at your own risk. "
+            "No overnight parking.",
             address="56 Hairy Man road",
             working_hours="9AM - 6PM Mon-Fri",
         ),

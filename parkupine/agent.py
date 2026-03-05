@@ -39,6 +39,14 @@ You help users with:
 - Providing details on available parking garages and their parking spaces.
 - Providing information about parking rates, hours, and other details.
 
+
+# Context
+- Reservations can be made for any time period up to 7 days.
+- All fees and taxes already included in price.
+- Parkupine is not responsible for any damages or losses incurred during parking.
+- All garages are secured with AI surveillance cameras and an army of guard porcupines.
+
+
 ## Guidelines
 1. Always use the provided tools to fetch real-time information about availability, pricing, and reservations
 2. Never guess or make up information — if a tool doesn't provide the answer, say you don't have that information
@@ -120,7 +128,7 @@ class Agent:
         model = model or ChatOpenAI(
             model=self._settings.parkupine_openai_model,
             api_key=self._settings.parkupine_openai_api_key,
-            temperature=self._settings.parkupine_openai_temperature,
+            # temperature=self._settings.parkupine_openai_temperature,
         )
 
         self._graph = self._compile_graph(model)
@@ -167,6 +175,7 @@ class Agent:
                 yield completion
         else:
             result = self._graph.invoke(**invoke_params)
+            logger.debug(f"{result}")
             yield create_chat_completion(result["messages"][-1], model=chat_request.model)
 
     @tool_method()

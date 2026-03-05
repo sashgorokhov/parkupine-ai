@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from testcontainers.redis import RedisContainer, AsyncRedisContainer
+from testcontainers.redis import AsyncRedisContainer
 
 
 @pytest.fixture()
