@@ -42,6 +42,18 @@ Prerequisites:
 3. Run `docker-compose exec worker python -m parkupine.tables`. This will pre-populate DB with some data. This step is idempotent.
 4. Access Open WebUI at http://localhost:8080/ and signup with any name, email and password
 
+There will be two models available: Parkupine and Parkupine Admin.
+
+Parkupine model can:
+- answer general parking questions
+- collect information for reservation
+- make reservation
+- report reservation status
+
+Parkupine Admin model can:
+- List pending reservations
+- Approve reservations
+- Reject reservations
 
 Running tests:
 ```shell
@@ -96,6 +108,9 @@ User -> Open WebUI -> fastapi `/v1/chat/completions` -> redis queue -> worker pr
 
 - User management is very rudimentary and not suitable for production. Single token authenticates all users.
 - Relies on openwebui headers for user identification which limits adaptability.
+- Garage, reservation etc database interactions should be abstracted into service layer.
+- User/admin models live in same Graph, which is intentional for routing supersize but is not the best solution.
+- sqlalchemy and SQLModel interactions are very basic. No migrations.
 
 ---
 

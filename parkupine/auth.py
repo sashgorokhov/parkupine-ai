@@ -56,34 +56,20 @@ def user_required(
     These values are passed from OpenWebUI where user signs up and authenticates.
     """
 
-    if credentials and credentials.credentials == settings.parkupine_chat_key.get_secret_value():
-        return BaseUser(
+    if credentials:
+        user = BaseUser(
             id=openwebui_user_headers.x_openwebui_user_id,
             name=openwebui_user_headers.x_openwebui_user_name,
             email=openwebui_user_headers.x_openwebui_user_email,
             role="user",
         )
-    raise HTTPException(status_code=401)
+        if credentials.credentials == settings.parkupine_chat_key.get_secret_value():
+            return user
+        if credentials.credentials == settings.parkupine_chat_admin_key.get_secret_value():
+            user.role = "admin"
+            return user
+
+    raise HTTPException(status_code=401, detail="Invalid or missing credentials, check Bearer authorization header")
 
 
 UserDep = Annotated[BaseUser, Depends(user_required)]
-
-
-def admin_required(
-    settings: AppSettingsDep,
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
-) -> BaseUser:
-    """
-    If bearer token is right, returns User instance with admin role.
-    """
-    if credentials and credentials.credentials == settings.parkupine_admin_key.get_secret_value():
-        return BaseUser(
-            id="0",
-            name="admin",
-            email="admin@admin.com",
-            role="admin",
-        )
-    raise HTTPException(status_code=401)
-
-
-AdminDep = Annotated[BaseUser, Depends(admin_required)]

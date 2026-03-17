@@ -17,7 +17,7 @@ from langgraph.store.postgres import PostgresStore
 from pydantic import BaseModel
 from redis import Redis
 from sqlmodel import Session
-
+from sqlalchemy.orm import sessionmaker
 from parkupine.agent import Agent, manual_chat_completion
 from parkupine.auth import BaseUser
 from parkupine.settings import AppSettings, setup_logging
@@ -172,6 +172,7 @@ def entrypoint() -> None:
     settings = AppSettings()
     redis = Redis.from_url(settings.redis_url)
     engine = get_engine(settings)
+    SessionLocal = sessionmaker(bind=engine, class_=Session, autoflush=False, autocommit=False)
 
     logger.info(f"Initializing: {settings}")
 
@@ -180,10 +181,9 @@ def entrypoint() -> None:
     with (
         ShallowPostgresSaver.from_conn_string(postgres_url) as checkpointer,
         PostgresStore.from_conn_string(postgres_url) as store,
-        Session(engine) as session,
     ):
 
-        agent = Agent(db_session=session, checkpointer=checkpointer, store=store, settings=settings)
+        agent = Agent(db_session=SessionLocal, checkpointer=checkpointer, store=store, settings=settings)
         worker = Worker(agent=agent, redis=redis)
 
         with worker:

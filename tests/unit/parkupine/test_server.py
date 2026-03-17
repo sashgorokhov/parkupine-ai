@@ -8,7 +8,7 @@ from parkupine.agent import manual_chat_completion
 
 
 @pytest.mark.parametrize("endpoint", ["/models", "/v1/models"])
-def test_models(endpoint, client, app_settings):
+def test_models(endpoint, client, app_settings, set_auth_headers):
     response = client.get(endpoint)
     assert response.status_code == 200
     assert response.json()["data"][0]["id"] == app_settings.model_id

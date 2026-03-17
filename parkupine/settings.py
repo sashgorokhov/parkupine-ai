@@ -15,7 +15,9 @@ class AppSettings(BaseSettings):
 
     redis_url: str
 
-    parkupine_chat_key: SecretStr
+    parkupine_chat_key: SecretStr = SecretStr("chat")
+    parkupine_chat_admin_key: SecretStr = SecretStr("admin")
+
     parkupine_openai_api_key: SecretStr
     parkupine_openai_model: str = "gpt-4o"
     parkupine_openai_temperature: float = 0.3
@@ -24,7 +26,9 @@ class AppSettings(BaseSettings):
     model_name: str = "Parkupine"
     model_owner: str = "Parkupine Inc."
 
-    parkupine_admin_key: SecretStr = SecretStr("admin")
+    admin_model_id: str = "parkupine_admin_v1"
+    admin_model_name: str = "Parkupine Admin"
+    admin_model_owner: str = "Parkupine Inc."
 
     database_host: str = "localhost"
     database_port: int = 5432

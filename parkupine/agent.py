@@ -9,10 +9,9 @@ import inspect
 import logging
 import time
 import uuid
-from typing import Iterator, Callable, Any, ParamSpec, TypeVar
+from typing import Iterator, Callable, Any, ParamSpec, TypeVar, Literal, Optional
 
 from fastapi_openai_compat import ChatRequest, ChatCompletion, Choice, Message
-from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessageChunk, AIMessage, ToolMessage, ToolMessageChunk
@@ -20,9 +19,13 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.constants import END
+from langgraph.graph import StateGraph, START, MessagesState
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.store.base import BaseStore
-from sqlmodel import Session, select
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import select, Session
 
 from parkupine.auth import BaseUser
 from parkupine.settings import AppSettings
@@ -30,7 +33,7 @@ from parkupine.tables import ParkingGarage, ParkingSpace, ParkingReservation
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """\
+USER_SYSTEM_PROMPT = """\
 You are Parkupine, a parking reservation assistant.
 
 ## Core Responsibilities
@@ -69,8 +72,24 @@ Be professional, helpful, and efficient. Users are often in a hurry when managin
 ensuring accuracy.
 """
 
+ADMIN_SYSTEM_PROMPT = """\
+You are Parkupine, a parking reservation assistant.
+
+## Core Responsibilities
+You help users with:
+- Checking currently pending parking reservations
+- Processing requests of approval or rejection of parking reservations
+
+## Boundaries
+You MUST politely decline to answer questions unrelated to parking reservations.
+"""
+
 P = ParamSpec("P")
 T = TypeVar("T")
+
+
+class State(MessagesState):  # type: ignore[misc]
+    model: str
 
 
 def tool_method(**kwargs: Any) -> Callable[[Callable[P, T]], property]:
@@ -104,6 +123,16 @@ def tool_method(**kwargs: Any) -> Callable[[Callable[P, T]], property]:
     return decorator
 
 
+def get_model_name(state: State, config: RunnableConfig) -> Literal["admin", "user"]:
+    """
+    Depending on user role from State context, route graph into admin or user node
+    """
+    user: BaseUser | None = config["configurable"].get("user", None)
+    if user and user.is_admin and state["model"] == "parkupine_admin_v1":
+        return "admin"
+    return "user"
+
+
 class Agent:
     """
     Agent class manages graph execution and stores database connections and such.
@@ -114,7 +143,7 @@ class Agent:
 
     def __init__(
         self,
-        db_session: Session,
+        db_session: sessionmaker[Session],
         checkpointer: BaseCheckpointSaver,
         store: BaseStore,
         settings: AppSettings,
@@ -125,39 +154,65 @@ class Agent:
         self._checkpointer = checkpointer
         self._store = store
 
-        model = model or ChatOpenAI(
+        self._model = model or ChatOpenAI(
             model=self._settings.parkupine_openai_model,
             api_key=self._settings.parkupine_openai_api_key,
             # temperature=self._settings.parkupine_openai_temperature,
         )
 
-        self._graph = self._compile_graph(model)
+        self._graph = self._compile_graph()
 
-    def _compile_graph(self, model: BaseChatModel) -> CompiledStateGraph:
-        agent = create_agent(
-            model=model,
-            debug=self._settings.debug,
+    def _compile_graph(self) -> CompiledStateGraph:
+        # Ideally we should use separate user and admin graphs, but for the sake of exercise
+        # lets do some routing
+        builder = StateGraph(state_schema=State)
+
+        user_tools = [
+            self.list_garages_by_name,
+            self.get_garage_details_by_name,
+            self.get_parking_spaces_by_garage,
+            self.make_reservation,
+            self.list_reservations,
+            self.check_reservation,
+        ]
+
+        admin_tools = [self.list_pending_reservations, self.approve_reservation, self.reject_reservation]
+
+        user_model = self._model.bind_tools(user_tools)
+        admin_model = self._model.bind_tools(admin_tools)
+
+        def call_user_model(state: MessagesState) -> dict[str, Any]:
+            return {"messages": [user_model.invoke([USER_SYSTEM_PROMPT] + state["messages"])]}
+
+        def call_admin_model(state: MessagesState) -> dict[str, Any]:
+            return {"messages": [admin_model.invoke([ADMIN_SYSTEM_PROMPT] + state["messages"])]}
+
+        builder.add_node("user", call_user_model)
+        builder.add_node("admin", call_admin_model)
+        builder.add_node("user_tools", ToolNode(user_tools))
+        builder.add_node("admin_tools", ToolNode(admin_tools))
+
+        builder.add_conditional_edges(START, get_model_name)
+        builder.add_conditional_edges("user", tools_condition, {"tools": "user_tools", "__end__": END})
+        builder.add_conditional_edges("admin", tools_condition, {"tools": "admin_tools", "__end__": END})
+        builder.add_edge("user_tools", "user")
+        builder.add_edge("admin_tools", "admin")
+
+        graph = builder.compile(
             checkpointer=self._checkpointer,
             store=self._store,
-            system_prompt=SYSTEM_PROMPT,
-            tools=[
-                self.list_garages_by_name,
-                self.get_garage_details_by_name,
-                self.get_parking_spaces_by_garage,
-                self.make_reservation,
-                self.list_reservations,
-                self.check_reservation,
-            ],
+            debug=self._settings.debug,
+            name="Parkupine",
         )
 
-        return agent
+        return graph
 
     def handle_chat_request(self, chat_request: ChatRequest, user: BaseUser, chat_id: str) -> Iterator[ChatCompletion]:
         """
         Run graph on provided chat request and return iterator over ChatCompletion objects
         """
         invoke_params = dict(
-            input={"messages": chat_request.messages},
+            input={"messages": chat_request.messages, "model": chat_request.model},
             config=RunnableConfig(
                 configurable={
                     "thread_id": chat_id,
@@ -183,20 +238,22 @@ class Agent:
         """
         Return names of available parking garages
         """
-        statement = select(ParkingGarage)
-        garages = self._db_session.exec(statement).all()
-        return [garage.name for garage in garages]
+        with self._db_session() as session:
+            statement = select(ParkingGarage)
+            garages = session.exec(statement).all()
+            return [garage.name for garage in garages]
 
     @tool_method()
     def get_garage_details_by_name(self, garage_name: str) -> ParkingGarage | None:
         """
         Return garage details (working hours, address, description) by name
         """
-        statement = select(ParkingGarage).where(ParkingGarage.name == garage_name)
-        try:
-            garage = self._db_session.exec(statement).one()
-        except Exception:  # noqa: B001
-            return None
+        with self._db_session() as session:
+            statement = select(ParkingGarage).where(ParkingGarage.name == garage_name)
+            try:
+                garage: ParkingGarage = session.exec(statement).one()
+            except Exception:  # noqa: B001
+                return None
 
         return garage
 
@@ -205,11 +262,10 @@ class Agent:
         """
         Return parking spaces present in garage
         """
-        garage: ParkingGarage = self._db_session.exec(
-            select(ParkingGarage).where(ParkingGarage.name == garage_name)
-        ).one()
-        spaces = self._db_session.exec(select(ParkingSpace).where(ParkingSpace.garage_id == garage.id)).all()
-        return list(spaces)
+        with self._db_session() as session:
+            garage: ParkingGarage = session.exec(select(ParkingGarage).where(ParkingGarage.name == garage_name)).one()
+            spaces = session.exec(select(ParkingSpace).where(ParkingSpace.garage_id == garage.id)).all()
+            return list(spaces)
 
     @tool_method()
     def make_reservation(
@@ -229,19 +285,20 @@ class Agent:
         - car plate number
         - reservation period
         """
-        parking_space = self._db_session.exec(select(ParkingSpace).where(ParkingSpace.name == parking_space_name)).one()
+        with self._db_session() as session:
+            parking_space = session.exec(select(ParkingSpace).where(ParkingSpace.name == parking_space_name)).one()
 
-        reservation = ParkingReservation(
-            user_id=config["configurable"]["user"].id,
-            user_name=user_name,
-            user_surname=user_surname,
-            plate_number=plate_number,
-            period=reservation_period,
-            space_id=parking_space.id,
-        )
-        self._db_session.add(reservation)
-        self._db_session.commit()
-        self._db_session.refresh(reservation)
+            reservation = ParkingReservation(
+                user_id=config["configurable"]["user"].id,
+                user_name=user_name,
+                user_surname=user_surname,
+                plate_number=plate_number,
+                period=reservation_period,
+                space_id=parking_space.id,
+            )
+            session.add(reservation)
+            session.commit()
+            session.refresh(reservation)
 
         return f"Created reservation with id={reservation.id}. Status: {reservation.status}"
 
@@ -250,25 +307,78 @@ class Agent:
         """
         Return all current reservations
         """
-        return list(
-            self._db_session.exec(
-                select(ParkingReservation).where(ParkingReservation.user_id == config["configurable"]["user"].id)
-            ).all()
-        )
+        with self._db_session() as session:
+            return list(
+                session.exec(
+                    select(ParkingReservation).where(ParkingReservation.user_id == config["configurable"]["user"].id)
+                ).all()
+            )
 
     @tool_method()
     def check_reservation(self, config: RunnableConfig, reservation_id: int) -> str:
         """
         Check reservation status
         """
-        reservation = self._db_session.exec(
-            select(ParkingReservation)
-            .where(ParkingReservation.id == reservation_id)
-            .where(ParkingReservation.user_id == config["configurable"]["user"].id)
-        ).one_or_none()
-        if not reservation:
+        with self._db_session() as session:
+            reservation: Optional[ParkingReservation] = session.exec(
+                select(ParkingReservation)
+                .where(ParkingReservation.id == reservation_id)
+                .where(ParkingReservation.user_id == config["configurable"]["user"].id)
+            ).one_or_none()
+            if not reservation:
+                return "Reservation not found"
+            return reservation.status
+
+    @tool_method()
+    def list_pending_reservations(self) -> list[ParkingReservation]:
+        """
+        Return all parking reservations that are pending review or require admin/manager attention
+        """
+        with self._db_session() as session:
+            return list(session.exec(select(ParkingReservation).where(ParkingReservation.status == "on_review")).all())
+
+    # Ideally this logic must be park of Service layer
+    def set_reservation_status(self, reservation_id: int, status: str) -> ParkingReservation:
+        """
+        Approve a pending parking reservation by setting its status to approved
+        """
+        with self._db_session() as session:
+            reservation: Optional[ParkingReservation] = session.exec(
+                select(ParkingReservation).where(ParkingReservation.id == reservation_id).with_for_update()
+            ).one_or_none()
+
+            if not reservation:
+                raise ValueError("Reservation not found")
+
+            reservation.status = status
+
+            session.add(reservation)
+            session.commit()
+            session.refresh(reservation)
+
+            return reservation
+
+    @tool_method()
+    def approve_reservation(self, reservation_id: int) -> str:
+        """
+        Approve a pending parking reservation by its reservation_id
+        """
+        try:
+            self.set_reservation_status(reservation_id, "approved")
+            return f"Reservation {reservation_id} has been approved"
+        except ValueError:
             return "Reservation not found"
-        return reservation.status
+
+    @tool_method()
+    def reject_reservation(self, reservation_id: int) -> str:
+        """
+        Reject a pending parking reservation by its reservation_id
+        """
+        try:
+            self.set_reservation_status(reservation_id, "rejected")
+            return f"Reservation {reservation_id} has been rejected"
+        except ValueError:
+            return "Reservation not found"
 
 
 def create_chat_completion(message: AIMessage | ToolMessage, model: str) -> ChatCompletion:

@@ -7,7 +7,7 @@ from openevals import create_llm_as_judge
 from openevals.prompts import CORRECTNESS_PROMPT, RAG_HELPFULNESS_PROMPT, RAG_RETRIEVAL_RELEVANCE_PROMPT
 from sqlmodel import select
 
-from parkupine.agent import SYSTEM_PROMPT
+from parkupine.agent import USER_SYSTEM_PROMPT
 from parkupine.tables import populate_data, ParkingGarage, ParkingSpace
 
 pytestmark = pytest.mark.vcr
@@ -100,7 +100,7 @@ def test_agent_evaluation(
     garages = list(map(operator.methodcaller("model_dump"), db_session.exec(select(ParkingGarage)).all()))
     spaces = list(map(operator.methodcaller("model_dump"), db_session.exec(select(ParkingSpace)).all()))
 
-    context = {"documents": garages + spaces + [SYSTEM_PROMPT]}
+    context = {"documents": garages + spaces + [USER_SYSTEM_PROMPT]}
 
     with subtests.test(eval="relevance"):
         evaluation = relevance_evaluator(inputs=inputs, outputs=outputs, reference_outputs=expected, context=context)

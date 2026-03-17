@@ -47,7 +47,7 @@ async def health_check() -> dict[str, str]:
 
 @app.get("/v1/models")
 @app.get("/models")
-async def models(settings: AppSettingsDep) -> ModelsResponse:
+async def models(settings: AppSettingsDep, user: UserDep) -> ModelsResponse:
     """
     Returns a list of available models (deployed pipelines) in OpenAI-compatible format.
     Each model object contains an `id` that can be used as the `model` field
@@ -57,8 +57,8 @@ async def models(settings: AppSettingsDep) -> ModelsResponse:
     - [OpenAI Models API](https://platform.openai.com/docs/api-reference/models/list)
     - [Ollama OpenAI compatibility](https://github.com/ollama/ollama/blob/main/docs/openai.md)
     """
-    return ModelsResponse(
-        data=[
+    if user.is_user:
+        m = [
             ModelObject(
                 id=settings.model_id,
                 name=settings.model_name,
@@ -66,7 +66,22 @@ async def models(settings: AppSettingsDep) -> ModelsResponse:
                 created=int(time.time()),
                 owned_by=settings.model_owner,
             )
-        ],
+        ]
+    elif user.is_admin:
+        m = [
+            ModelObject(
+                id=settings.admin_model_id,
+                name=settings.admin_model_name,
+                object="model",
+                created=int(time.time()),
+                owned_by=settings.model_owner,
+            )
+        ]
+    else:
+        m = []
+
+    return ModelsResponse(
+        data=m,
         object="list",
     )
 
@@ -99,6 +114,10 @@ async def chat_completions(
     References:
     - [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat/create)
     """
+    # Should use permissions pattern dependencies instead
+    if not user.is_admin and chat_request.model == context.settings.admin_model_id:
+        raise HTTPException(status_code=403, detail="Not an admin")
+
     try:
         logger.debug(f"Received chat request {chat_request} from {user}")
         # This will send chat request into redis queue, and wait for stream of tokens and return them here
