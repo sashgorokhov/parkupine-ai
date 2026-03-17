@@ -175,11 +175,13 @@ def entrypoint() -> None:
 
     logger.info(f"Initializing: {settings}")
 
-    with ShallowPostgresSaver.from_conn_string(
-        settings.database_url_pg3.get_secret_value()
-    ) as checkpointer, PostgresStore.from_conn_string(settings.database_url_pg3.get_secret_value()) as store, Session(
-        engine
-    ) as session:
+    postgres_url = settings.database_url_pg3.get_secret_value()
+
+    with (
+        ShallowPostgresSaver.from_conn_string(postgres_url) as checkpointer,
+        PostgresStore.from_conn_string(postgres_url) as store,
+        Session(engine) as session,
+    ):
 
         agent = Agent(db_session=session, checkpointer=checkpointer, store=store, settings=settings)
         worker = Worker(agent=agent, redis=redis)
