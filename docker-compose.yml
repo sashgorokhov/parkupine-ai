@@ -102,12 +102,28 @@ services:
       - DATABASE_PORT=5432
       - REDIS_URL=redis://redis:6379/0
       - PYTHONPATH=/app
+      - MCP_URL=http://parkupine_mcp:8001/mcp
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      parkupine_mcp:
+        condition: service_started
     restart: unless-stopped
+
+  parkupine_mcp:
+    build:
+      context: .
+    command: ["uvicorn", "parkupine.mcp:app", "--host", "0.0.0.0", "--port", "8001", "--log-level", "debug"]
+    ports:
+      - "8001:8001"
+    env_file:
+      - path: ./common.env
+      - path: ./private.env
+        required: false
+    restart: unless-stopped
+
 
 volumes:
   postgres_data:

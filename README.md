@@ -15,6 +15,7 @@ Some of the used software:
 - [langchain](https://docs.langchain.com/oss/python/langchain/overview)
 - [valkey](https://valkey.io/)
 - [openevals](https://github.com/langchain-ai/openevals)
+- [fastmcp](https://gofastmcp.com)
 
 Under the hood, this is a Open WebUI frontend with FastApi OpenAI-compatible backend. Agent logic is executed asynchronously
 on separate workers, with communication through redis queue and channels.
@@ -41,8 +42,8 @@ Prerequisites:
 2. Run `docker-compose up -d --wait`. This will start all services.
 3. Run `docker-compose exec worker python -m parkupine.tables`. This will pre-populate DB with some data. This step is idempotent.
 4. Access Open WebUI at http://localhost:8080/ and signup with any name, email and password
-
-There will be two models available: Parkupine and Parkupine Admin.
+5. Select "Parkupine" agent on top left, and ask it about making reservation
+6. After completing reservation procedure, select "Parkupine Admin" agent (and start a new chat), and ask it about any pending reservations, and approve one.
 
 Parkupine model can:
 - answer general parking questions
@@ -54,6 +55,23 @@ Parkupine Admin model can:
 - List pending reservations
 - Approve reservations
 - Reject reservations
+
+Example workflow:
+- "hey I need to park in downtown this weekend"
+- agent will show available garages
+- "whats the security at green garage"
+- agent will use RAG to pull info and show it
+- "sure lets do it"
+- agent will ask for parking space choice
+- "Ill take 1G, my name is John Doe and plate is FOO123. I want reservation on the whole weekend"
+- agent will make reservation and tell you its ID
+
+- at Parkupine Admin agent, ask "list pending reservations"
+- agent will show any reservations in pending status
+- "okay approve reservation <number>"
+- agent will change reservation status and call MCP server to create a reservation file
+
+There will be two models available: Parkupine and Parkupine Admin.
 
 Running tests:
 ```shell
@@ -88,8 +106,9 @@ Swagger UI: http://localhost:8000/docs
 interaction with underlying agent logic. It is highly configurable and you can find 100+ environment
 variables in this [.env](common.env) file.
 
-OpenWebUI communicates with FastApi [server](parkupine/server.py) that mimics OpenAI interface. This server has just two
-endpoints, one of which is chat completions.
+OpenWebUI is preconfigured (through env variables) to use static bearer tokens
+that will authorize your user to use both regular and admin agents. OpenWebUI communicates with FastApi [server](parkupine/server.py) that mimics OpenAI interface.
+This server has just two endpoints, one of which is chat completions.
 
 This endpoint authenticates user through bearer api token and collects all context information, and creates
 `ChatWorkItem` and puts it into `chat_requests` queue. It then subscribes to request-scoped channel in redis
@@ -104,6 +123,10 @@ General data flow can be described as:
 User -> Open WebUI -> fastapi `/v1/chat/completions` -> redis queue -> worker process -> Agent class
 -> LangGraph `.invoke`
 
+MCP server does not have any authentication, and is secured by making it only accept localhost connections. It will
+be called from worker process only. It is possible to secure it even further by putting both in a isolated network
+interface.
+
 ## Tradeoffs and cut corners
 
 - User management is very rudimentary and not suitable for production. Single token authenticates all users.
@@ -111,6 +134,7 @@ User -> Open WebUI -> fastapi `/v1/chat/completions` -> redis queue -> worker pr
 - Garage, reservation etc database interactions should be abstracted into service layer.
 - User/admin models live in same Graph, which is intentional for routing supersize but is not the best solution.
 - sqlalchemy and SQLModel interactions are very basic. No migrations.
+- MCP client is a workaround implementation since agent code is synchronous, but all MCP tool wrappers are asynchronous. duh.
 
 ---
 

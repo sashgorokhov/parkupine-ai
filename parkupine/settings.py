@@ -36,6 +36,8 @@ class AppSettings(BaseSettings):
     database_password: SecretStr = SecretStr("password")
     database_name: str = "parkupine"
 
+    mcp_url: str = "http://localhost:8001/mcp"
+
     model_config = SettingsConfigDict(
         case_sensitive=False,
         env_prefix="",

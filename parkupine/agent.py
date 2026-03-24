@@ -4,13 +4,15 @@ Agent logic - prompts, graph definition, RAG and tool functions.
 Defines Agent class, serving as a main collection of AI nonsense.
 """
 
+import asyncio
 import functools
 import inspect
 import logging
 import time
 import uuid
-from typing import Iterator, Callable, Any, ParamSpec, TypeVar, Literal, Optional
+from typing import Iterator, Callable, Any, ParamSpec, TypeVar, Literal, Optional, cast
 
+import fastmcp
 from fastapi_openai_compat import ChatRequest, ChatCompletion, Choice, Message
 from langchain.tools import tool
 from langchain_core.language_models import BaseChatModel
@@ -148,6 +150,7 @@ class Agent:
         store: BaseStore,
         settings: AppSettings,
         model: BaseChatModel | None = None,
+        mcp_transport: fastmcp.FastMCP | str | None = None,
     ):
         self._db_session = db_session
         self._settings = settings
@@ -159,6 +162,8 @@ class Agent:
             api_key=self._settings.parkupine_openai_api_key,
             # temperature=self._settings.parkupine_openai_temperature,
         )
+
+        self._mcp_client = fastmcp.Client(mcp_transport or self._settings.mcp_url)
 
         self._graph = self._compile_graph()
 
@@ -176,7 +181,12 @@ class Agent:
             self.check_reservation,
         ]
 
-        admin_tools = [self.list_pending_reservations, self.approve_reservation, self.reject_reservation]
+        admin_tools = [
+            self.list_pending_reservations,
+            self.approve_reservation,
+            self.reject_reservation,
+            self.create_reservation_file,
+        ]
 
         user_model = self._model.bind_tools(user_tools)
         admin_model = self._model.bind_tools(admin_tools)
@@ -279,6 +289,7 @@ class Agent:
     ) -> str:
         """
         Create a reservation for parking space.
+
         Must ask user for:
         - parking space name for reservation
         - name and surname
@@ -330,12 +341,18 @@ class Agent:
             return reservation.status
 
     @tool_method()
-    def list_pending_reservations(self) -> list[ParkingReservation]:
+    def list_pending_reservations(self) -> list[ParkingReservation] | str:
         """
         Return all parking reservations that are pending review or require admin/manager attention
         """
         with self._db_session() as session:
-            return list(session.exec(select(ParkingReservation).where(ParkingReservation.status == "on_review")).all())
+            reservations = list(
+                session.exec(select(ParkingReservation).where(ParkingReservation.status == "on_review")).all()
+            )
+
+        if not reservations:
+            return "No pending reservations"
+        return reservations
 
     # Ideally this logic must be park of Service layer
     def set_reservation_status(self, reservation_id: int, status: str) -> ParkingReservation:
@@ -361,13 +378,39 @@ class Agent:
     @tool_method()
     def approve_reservation(self, reservation_id: int) -> str:
         """
-        Approve a pending parking reservation by its reservation_id
+        Approve a pending parking reservation by its reservation_id.
+
+        After reservation is approved, call create_reservation_file tool.
         """
         try:
             self.set_reservation_status(reservation_id, "approved")
+
             return f"Reservation {reservation_id} has been approved"
         except ValueError:
             return "Reservation not found"
+
+    @tool_method()
+    def create_reservation_file(self, user_name: str, user_surname: str, plate_number: str, period: str) -> str:
+        """
+        Create a reservation file
+        """
+
+        # This is needed because both fastmcp and langchain's MCP code does not work in synchronous context.
+        # This is a huge hurdle that requires full system redesign to handle properly
+        async def async_context() -> str:
+            async with self._mcp_client:
+                result = await self._mcp_client.call_tool(
+                    "create_reservation_file",
+                    {
+                        "user_name": user_name,
+                        "user_surname": user_surname,
+                        "plate_number": plate_number,
+                        "period": period,
+                    },
+                )
+                return cast(str, result.data["status"])
+
+        return asyncio.run(async_context())
 
     @tool_method()
     def reject_reservation(self, reservation_id: int) -> str:
