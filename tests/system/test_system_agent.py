@@ -8,14 +8,17 @@ from openevals.prompts import CORRECTNESS_PROMPT, RAG_HELPFULNESS_PROMPT, RAG_RE
 from sqlmodel import select
 
 from parkupine.agent import USER_SYSTEM_PROMPT
-from parkupine.tables import populate_data, ParkingGarage, ParkingSpace
+from parkupine.rag import populate_vector_store
+from parkupine.tables import populate_data, ParkingGarage, ParkingSpace, populate_metadata
 
 pytestmark = pytest.mark.vcr
 
 
 @pytest.fixture(autouse=True)
-def populate_db(engine):
+def populate_db(engine, agent, app_settings):
+    populate_metadata(engine)
     populate_data(engine)
+    populate_vector_store(app_settings, engine)
 
 
 @pytest.fixture()
@@ -97,8 +100,9 @@ def test_agent_evaluation(
 
         assert evaluation["score"], evaluation["comment"]
 
-    garages = list(map(operator.methodcaller("model_dump"), db_session.exec(select(ParkingGarage)).all()))
-    spaces = list(map(operator.methodcaller("model_dump"), db_session.exec(select(ParkingSpace)).all()))
+    with db_session() as s:
+        garages = list(map(operator.methodcaller("model_dump"), s.exec(select(ParkingGarage)).all()))
+        spaces = list(map(operator.methodcaller("model_dump"), s.exec(select(ParkingSpace)).all()))
 
     context = {"documents": garages + spaces + [USER_SYSTEM_PROMPT]}
 

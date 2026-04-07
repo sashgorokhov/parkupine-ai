@@ -19,6 +19,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessageChunk, AIMessage, ToolMessage, ToolMessageChunk
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
+from langchain_core.vectorstores import VectorStore
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.constants import END
@@ -43,7 +44,7 @@ You help users with:
 - Creating parking reservations. Before creating reservation, collect user's plate number.
 - Providing details on available parking garages and their parking spaces.
 - Providing information about parking rates, hours, and other details.
-
+- Providing information about parking policy, FAQ and lot rules.
 
 # Context
 - Reservations can be made for any time period up to 7 days.
@@ -149,6 +150,7 @@ class Agent:
         checkpointer: BaseCheckpointSaver,
         store: BaseStore,
         settings: AppSettings,
+        vector_store: VectorStore,
         model: BaseChatModel | None = None,
         mcp_transport: fastmcp.FastMCP | str | None = None,
     ):
@@ -156,6 +158,7 @@ class Agent:
         self._settings = settings
         self._checkpointer = checkpointer
         self._store = store
+        self._vector_store = vector_store
 
         self._model = model or ChatOpenAI(
             model=self._settings.parkupine_openai_model,

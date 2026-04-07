@@ -38,6 +38,8 @@ class AppSettings(BaseSettings):
 
     mcp_url: str = "http://localhost:8001/mcp"
 
+    embeddings_model: str = "text-embedding-3-large"
+
     model_config = SettingsConfigDict(
         case_sensitive=False,
         env_prefix="",

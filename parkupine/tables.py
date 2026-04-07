@@ -14,6 +14,7 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import SQLModel, Field, create_engine, Session
 
+from parkupine.rag import populate_vector_store
 from parkupine.settings import AppSettings, setup_logging
 
 logger = logging.getLogger(__name__)
@@ -119,3 +120,4 @@ if __name__ == "__main__":
     populate_metadata(engine)
     populate_data(engine)
     setup_langgraph_resources(settings)
+    populate_vector_store(settings, engine)

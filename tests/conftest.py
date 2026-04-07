@@ -8,12 +8,14 @@ import pytest
 from fastapi.routing import _DefaultLifespan
 from fastapi.testclient import TestClient
 from fastapi_openai_compat import ChatRequest
+from langchain_community.embeddings import FakeEmbeddings
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models import BaseChatModel, LanguageModelInput
 from langchain_core.messages import BaseMessage, AIMessage, AIMessageChunk
 from langchain_core.outputs import ChatResult, ChatGeneration, ChatGenerationChunk
 from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
+from langchain_core.vectorstores import InMemoryVectorStore
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.memory import InMemoryStore
 from pydantic import Field
@@ -152,8 +154,16 @@ def model():
 def agent(db_session, app_settings, model):
     store = InMemoryStore()
     checkpointer = InMemorySaver()
+    vector_store = InMemoryVectorStore(embedding=FakeEmbeddings(size=100))
 
-    return Agent(db_session=db_session, store=store, checkpointer=checkpointer, settings=app_settings, model=model)
+    return Agent(
+        db_session=db_session,
+        store=store,
+        vector_store=vector_store,
+        checkpointer=checkpointer,
+        settings=app_settings,
+        model=model,
+    )
 
 
 @pytest.fixture()

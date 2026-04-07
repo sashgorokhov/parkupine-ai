@@ -20,6 +20,7 @@ from sqlmodel import Session
 from sqlalchemy.orm import sessionmaker
 from parkupine.agent import Agent, manual_chat_completion
 from parkupine.auth import BaseUser
+from parkupine.rag import get_vector_store
 from parkupine.settings import AppSettings, setup_logging
 from parkupine.tables import get_engine
 
@@ -177,13 +178,20 @@ def entrypoint() -> None:
     logger.info(f"Initializing: {settings}")
 
     postgres_url = settings.database_url_pg3.get_secret_value()
+    vector_store = get_vector_store(engine, settings)
 
     with (
         ShallowPostgresSaver.from_conn_string(postgres_url) as checkpointer,
         PostgresStore.from_conn_string(postgres_url) as store,
     ):
 
-        agent = Agent(db_session=SessionLocal, checkpointer=checkpointer, store=store, settings=settings)
+        agent = Agent(
+            db_session=SessionLocal,
+            checkpointer=checkpointer,
+            store=store,
+            vector_store=vector_store,
+            settings=settings,
+        )
         worker = Worker(agent=agent, redis=redis)
 
         with worker:
