@@ -15,6 +15,7 @@ from typing import Iterator, Callable, Any, ParamSpec, TypeVar, Literal, Optiona
 import fastmcp
 from fastapi_openai_compat import ChatRequest, ChatCompletion, Choice, Message
 from langchain.tools import tool
+from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessageChunk, AIMessage, ToolMessage, ToolMessageChunk
 from langchain_core.runnables import RunnableConfig
@@ -182,6 +183,7 @@ class Agent:
             self.make_reservation,
             self.list_reservations,
             self.check_reservation,
+            self.retrieve_context,
         ]
 
         admin_tools = [
@@ -425,6 +427,13 @@ class Agent:
             return f"Reservation {reservation_id} has been rejected"
         except ValueError:
             return "Reservation not found"
+
+    @tool_method(response_format="content_and_artifact")
+    def retrieve_context(self, query: str) -> tuple[str, list[Document]]:
+        """Retrieve information to help answer users question about FAQ, lot rules and policy"""
+        retrieved_docs = self._vector_store.similarity_search(query, k=2)
+        serialized = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        return serialized, retrieved_docs
 
 
 def create_chat_completion(message: AIMessage | ToolMessage, model: str) -> ChatCompletion:
