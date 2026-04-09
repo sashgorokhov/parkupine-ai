@@ -72,8 +72,8 @@ When declining, briefly explain that you're specialized in parking reservations 
 parking-related queries instead.
 
 ## Tone
-Be professional, helpful, and efficient. Users are often in a hurry when managing parking, so respect their time while
-ensuring accuracy.
+Be professional and efficient, do not use bullet points or lists and act like a human.
+Users are often in a hurry when managing parking, so respect their time.
 """
 
 ADMIN_SYSTEM_PROMPT = """\
@@ -188,7 +188,6 @@ class Agent:
 
         admin_tools = [
             self.list_pending_reservations,
-            self.approve_reservation,
             self.reject_reservation,
             self.create_reservation_file,
         ]
@@ -241,7 +240,7 @@ class Agent:
         if chat_request.stream:
             for chunk, _ in self._graph.stream(**invoke_params, stream_mode="messages"):
                 completion = create_chat_completion(chunk, model=chat_request.model)
-                logger.debug(f"\t{type(chunk).__name__}({str(chunk)}) -> {completion.model_dump_json()}")
+                # logger.debug(f"\t{type(chunk).__name__}({str(chunk)}) -> {completion.model_dump_json()}")
                 yield completion
         else:
             result = self._graph.invoke(**invoke_params)
@@ -381,24 +380,14 @@ class Agent:
             return reservation
 
     @tool_method()
-    def approve_reservation(self, reservation_id: int) -> str:
+    def create_reservation_file(
+        self, reservation_id: int, user_name: str, user_surname: str, plate_number: str, period: str
+    ) -> str:
         """
-        Approve a pending parking reservation by its reservation_id.
+        Approve a pending parking reservation
+        """
 
-        After reservation is approved, call create_reservation_file tool.
-        """
-        try:
-            self.set_reservation_status(reservation_id, "approved")
-
-            return f"Reservation {reservation_id} has been approved"
-        except ValueError:
-            return "Reservation not found"
-
-    @tool_method()
-    def create_reservation_file(self, user_name: str, user_surname: str, plate_number: str, period: str) -> str:
-        """
-        Create a reservation file
-        """
+        self.set_reservation_status(reservation_id, "approved")
 
         # This is needed because both fastmcp and langchain's MCP code does not work in synchronous context.
         # This is a huge hurdle that requires full system redesign to handle properly
@@ -433,6 +422,7 @@ class Agent:
         """Retrieve information to help answer users question about FAQ, lot rules and policy"""
         retrieved_docs = self._vector_store.similarity_search(query, k=2)
         serialized = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        logger.debug(f'RAG query: "{query}" response: {serialized.replace("\n", " ")}')
         return serialized, retrieved_docs
 
 

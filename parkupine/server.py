@@ -25,6 +25,7 @@ from fastapi_openai_compat import (
 from pydantic import BaseModel, Field
 from starlette.responses import StreamingResponse
 
+from parkupine.agent import manual_chat_completion
 from parkupine.auth import UserDep
 from parkupine.context import AppContext
 from parkupine.dependencies import AppSettingsDep, AppContextDep
@@ -117,6 +118,13 @@ async def chat_completions(
     # Should use permissions pattern dependencies instead
     if not user.is_admin and chat_request.model == context.settings.admin_model_id:
         raise HTTPException(status_code=403, detail="Not an admin")
+
+    # This ignores some of the openwebui hidden prompts to save my $ tokens $
+    if (
+        chat_request.messages[0]["role"] == "system"
+        and "Your task is to choose and return the correct tool" in chat_request.messages[0]["content"]
+    ):
+        return manual_chat_completion('{"tool_calls": []}', model=chat_request.model)
 
     try:
         logger.debug(f"Received chat request {chat_request} from {user}")

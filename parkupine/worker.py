@@ -56,6 +56,8 @@ async def submit_chat_request(
     logger.info(f"Submitting chat work item {work_item.message_id=}")
     # Worker will watch for this queue for new work items
     await redis.lpush("chat_requests", work_item.model_dump_json())
+    logger.info(f">> User says: {work_item.chat_request.messages[-1]['content']}")
+    llm_response = ""
 
     async with redis.pubsub() as ps:
         await ps.subscribe(work_item.message_id)
@@ -70,9 +72,12 @@ async def submit_chat_request(
                         continue
 
                     if message["data"] == GENERATION_COMPLETE.encode():
+                        logger.info(f">> Model says: {llm_response}")
                         return
 
                     chat_completion = ChatCompletion.model_validate_json(message["data"])
+
+                    llm_response += (chat_completion.choices[-1].message or chat_completion.choices[-1].delta).content
 
                     if chat_request.stream:
                         yield _completion_to_sse(chat_completion)
